@@ -347,16 +347,50 @@ enters a payload).
 
 ## 9. Deployment
 
-Works on any Node host. On Vercel:
+Works on any Node host. The middleware runs on the **Node.js runtime**
+(`src/middleware.ts`) — the Edge runtime is deprecated and is rejected outright
+by anonymous Vercel deployments.
 
-1. Import the repository.
-2. Add every variable from `.env.example` under **Settings → Environment
-   Variables**. Put the Zoho values in **all** environments you deploy, and
+### Permanent deployment (Vercel)
+
+```bash
+npx vercel login      # one-time, opens your browser
+npx vercel --prod
+```
+
+Then, in the Vercel dashboard:
+
+1. **Settings → Environment Variables** — add every variable from
+   `.env.example`. Put the Zoho values in **all** environments you deploy, and
    double-check none of them start with `NEXT_PUBLIC_`.
-3. Set `NEXT_PUBLIC_SITE_URL` to the production origin — the sitemap,
-   canonicals and Open Graph tags are derived from it.
+2. Set **`NEXT_PUBLIC_SITE_URL`** to the production origin. The sitemap,
+   canonical tags and Open Graph URLs are derived from it.
+   *(Without it the app falls back to Vercel's injected `VERCEL_URL`, and
+   finally to `http://localhost:3000`.)*
+3. Set **`NEXT_PUBLIC_ALLOW_INDEXING=true`** only once the placeholder content
+   is replaced — see §12. Until then the whole site serves `noindex`.
 4. Add the production origin to **Supabase → Authentication → URL
    Configuration**.
+
+### Temporary / anonymous deployment
+
+```bash
+npx vercel deploy --temporary --prod
+```
+
+Produces a public URL with no login, and prints a claim link to keep it.
+**It expires about an hour after creation unless claimed.**
+
+Two caveats specific to anonymous deployments:
+
+- Vercel injects no project environment variables into the build, and `-b` /
+  `--build-env` is ignored. `NEXT_PUBLIC_SITE_URL` therefore cannot be set, so
+  canonical tags and the sitemap fall back to `http://localhost:3000`. This is
+  cosmetic while the site is `noindex`, and resolves itself on a claimed or
+  logged-in deployment.
+- Supabase and Zoho stay unconfigured, so sign-in shows the
+  "accounts are not connected" notice and quote enquiries are accepted but not
+  pushed to the CRM.
 
 > **Rate limiting is per-instance.** `src/lib/rate-limit.ts` holds counters in
 > process memory, which protects a single server but not a fleet of serverless
