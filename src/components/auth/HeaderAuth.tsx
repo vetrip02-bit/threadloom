@@ -45,14 +45,13 @@ export function HeaderAuth() {
           Log in
         </Link>
         {/*
-          Rests on the same hairline border as the Quote Bag beside it. A navy
-          border at rest sat heavier than anything else in the header and read
-          as a permanently pressed state. The hover/focus state is where the
-          emphasis belongs.
+          No border at rest - it read as a permanently pressed state. The
+          transparent border only keeps this on the same baseline as Log in so
+          nothing shifts on hover, where the navy fill carries the emphasis.
         */}
         <Link
           href={'/signup' + next}
-          className="inline-flex h-10 items-center rounded-[6px] border border-hairline px-4 text-[13px] font-medium text-navy transition-colors duration-200 hover:border-navy hover:bg-navy hover:text-white"
+          className="inline-flex h-10 items-center rounded-[6px] border border-transparent px-4 text-[13px] font-medium text-navy transition-colors duration-200 hover:bg-navy hover:text-white"
         >
           Sign up
         </Link>
