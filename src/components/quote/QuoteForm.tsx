@@ -2,11 +2,10 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { AlertCircle, CheckCircle2, Loader2, Trash2 } from 'lucide-react'
+import { CheckCircle2, Loader2, Trash2 } from 'lucide-react'
 
 import { useQuote } from '@/components/quote/QuoteProvider'
-import { useAuth } from '@/components/auth/AuthProvider'
-import { BRANDING_METHODS } from '@/data/catalog'
+import { BRANDING_METHODS, CUSTOMER_TYPES } from '@/data/catalog'
 import {
   CheckboxField,
   SelectField,
@@ -14,8 +13,9 @@ import {
   TextField,
 } from '@/components/ui/Field'
 import { Button, ButtonLink } from '@/components/ui/Button'
+import { DeliveryFallback } from '@/components/quote/DeliveryFallback'
 import { formatQuantity, todayIso } from '@/lib/utils'
-import type { BrandingMethod } from '@/types'
+import type { BrandingMethod, CustomerType } from '@/types'
 
 type Status = 'idle' | 'submitting' | 'success' | 'error'
 
@@ -26,6 +26,7 @@ const INITIAL = {
   email: '',
   phone: '',
   city: '',
+  customerType: '' as CustomerType | '',
   requirements: '',
   estimatedQuantity: '',
   expectedDate: '',
@@ -34,7 +35,6 @@ const INITIAL = {
 
 export function QuoteForm() {
   const { items, removeItem, updateItem, totalPieces, clear } = useQuote()
-  const { user } = useAuth()
   const [values, setValues] = useState(INITIAL)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [status, setStatus] = useState<Status>('idle')
@@ -150,20 +150,7 @@ export function QuoteForm() {
         <fieldset disabled={status === 'submitting'} className="space-y-6">
           <legend className="sr-only">Quote request details</legend>
 
-          {formError ? (
-            <div
-              role="alert"
-              className="flex items-start gap-3 rounded-[8px] border border-burgundy/35 bg-burgundy/5 p-4"
-            >
-              <AlertCircle
-                size={18}
-                strokeWidth={1.8}
-                className="mt-0.5 shrink-0 text-burgundy"
-                aria-hidden="true"
-              />
-              <p className="text-[13.5px] leading-6 text-navy">{formError}</p>
-            </div>
-          ) : null}
+          {formError ? <DeliveryFallback message={formError} /> : null}
 
           <div className="grid gap-5 sm:grid-cols-2">
             <TextField
@@ -260,6 +247,17 @@ export function QuoteForm() {
             value={values.expectedDate}
             error={errors.expectedDate}
             onChange={(e) => set('expectedDate', e.target.value)}
+          />
+
+          <SelectField
+            label="Customer type"
+            name="customerType"
+            required
+            placeholder="Select the closest match"
+            options={CUSTOMER_TYPES}
+            value={values.customerType}
+            error={errors.customerType}
+            onChange={(e) => set('customerType', e.target.value as CustomerType)}
           />
 
           <TextAreaField
@@ -423,18 +421,6 @@ export function QuoteForm() {
             </>
           )}
 
-          {!user ? (
-            <p className="mt-6 border-t border-hairline pt-5 text-[12.5px] leading-6 text-charcoal/80">
-              <Link
-                href="/signin?next=/quote"
-                className="font-medium text-burgundy underline underline-offset-4"
-              >
-                Sign in
-              </Link>{' '}
-              to keep your quote bag across devices. It is not required to send an
-              enquiry.
-            </p>
-          ) : null}
         </div>
       </aside>
     </div>

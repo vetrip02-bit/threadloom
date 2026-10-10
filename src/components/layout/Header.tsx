@@ -3,21 +3,18 @@
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
 import { useEffect, useState } from 'react'
-import { Menu, Search, ShoppingBag, User } from 'lucide-react'
+import { Menu, Search, ShoppingBag } from 'lucide-react'
 
 import { BRAND, NAV_LINKS } from '@/lib/site'
 import { cn } from '@/lib/utils'
 import { useQuote } from '@/components/quote/QuoteProvider'
-import { useAuth } from '@/components/auth/AuthProvider'
 import { SearchPanel } from '@/components/layout/SearchPanel'
 import { MobileMenu } from '@/components/layout/MobileMenu'
 import { QuoteDrawer } from '@/components/quote/QuoteDrawer'
-import { AuthModal } from '@/components/auth/AuthModal'
 
 export function Header() {
   const pathname = usePathname()
   const { count, hydrated, openDrawer } = useQuote()
-  const { user, openAuthModal } = useAuth()
   const [menuOpen, setMenuOpen] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
 
@@ -97,24 +94,6 @@ export function Header() {
               <Search size={19} strokeWidth={1.6} aria-hidden="true" />
             </button>
 
-            {user ? (
-              <Link
-                href="/account"
-                className="hidden h-10 items-center gap-2 rounded-[6px] px-3 text-[13px] font-medium text-navy transition-colors hover:bg-ivory md:inline-flex"
-              >
-                <User size={18} strokeWidth={1.6} aria-hidden="true" />
-                Account
-              </Link>
-            ) : (
-              <button
-                type="button"
-                onClick={() => openAuthModal('signin')}
-                className="hidden h-10 items-center gap-2 rounded-[6px] px-3 text-[13px] font-medium text-navy transition-colors hover:bg-ivory md:inline-flex"
-              >
-                <User size={18} strokeWidth={1.6} aria-hidden="true" />
-                Sign In
-              </button>
-            )}
 
             <button
               type="button"
@@ -145,7 +124,6 @@ export function Header() {
       <MobileMenu open={menuOpen} onClose={() => setMenuOpen(false)} />
       <SearchPanel open={searchOpen} onClose={() => setSearchOpen(false)} />
       <QuoteDrawer />
-      <AuthModal />
     </>
   )
 }

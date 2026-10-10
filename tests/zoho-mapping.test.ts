@@ -1,25 +1,12 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
 
 import {
-  buildContactRecord,
   buildQuoteDescription,
   buildQuoteRecord,
-  CONTACT_FIELD_MAP,
   formatQuoteItems,
   QUOTE_FIELD_MAP,
 } from '@/lib/zoho/mapping'
 import type { QuoteRequestInput } from '@/lib/validation/schemas'
-
-const profile = {
-  id: '6f1a1d2e-0000-4000-8000-9f0b1c2d3e4f',
-  first_name: 'Asha',
-  last_name: 'Menon',
-  phone: '+919876543210',
-  organization: 'Lakeside Public School',
-  customer_type: 'School / College' as const,
-  city: 'Kochi',
-  consent_at: '2026-01-10T06:30:00.000Z',
-}
 
 const quote: QuoteRequestInput = {
   firstName: 'Asha',
@@ -28,6 +15,7 @@ const quote: QuoteRequestInput = {
   email: 'asha.menon@example.com',
   phone: '+919876543210',
   city: 'Kochi',
+  customerType: 'School / College',
   requirements: 'Summer uniform sets for 420 students.',
   estimatedQuantity: 420,
   expectedDate: '2026-04-15',
@@ -56,85 +44,6 @@ const quote: QuoteRequestInput = {
     },
   ],
 }
-
-describe('buildContactRecord', () => {
-  it('maps the standard Contacts fields', () => {
-    const record = buildContactRecord({
-      profile,
-      email: 'asha.menon@example.com',
-      signedInAt: '2026-02-01T09:00:00.000Z',
-    })
-
-    expect(record[CONTACT_FIELD_MAP.firstName]).toBe('Asha')
-    expect(record[CONTACT_FIELD_MAP.lastName]).toBe('Menon')
-    expect(record[CONTACT_FIELD_MAP.email]).toBe('asha.menon@example.com')
-    expect(record[CONTACT_FIELD_MAP.phone]).toBe('+919876543210')
-    expect(record[CONTACT_FIELD_MAP.city]).toBe('Kochi')
-  })
-
-  it('uses the authenticated email, not anything from the profile row', () => {
-    const record = buildContactRecord({
-      profile,
-      email: 'authenticated@example.com',
-      signedInAt: '2026-02-01T09:00:00.000Z',
-    })
-    expect(record[CONTACT_FIELD_MAP.email]).toBe('authenticated@example.com')
-  })
-
-  it('falls back to the email local-part when Last_Name is blank', () => {
-    const record = buildContactRecord({
-      profile: { ...profile, last_name: '' },
-      email: 'procurement@example.com',
-      signedInAt: '2026-02-01T09:00:00.000Z',
-    })
-    expect(record[CONTACT_FIELD_MAP.lastName]).toBe('procurement')
-  })
-
-  it('omits optional custom fields while they are unmapped', () => {
-    const record = buildContactRecord({
-      profile,
-      email: 'asha.menon@example.com',
-      signedInAt: '2026-02-01T09:00:00.000Z',
-    })
-
-    // These stay null in mapping.ts until the owner pastes real API names.
-    expect(CONTACT_FIELD_MAP.organization).toBeNull()
-    expect(CONTACT_FIELD_MAP.supabaseUserId).toBeNull()
-    expect(Object.values(record)).not.toContain(profile.id)
-    expect(Object.values(record)).not.toContain('Lakeside Public School')
-  })
-
-  it('never includes a password field', () => {
-    const record = buildContactRecord({
-      profile,
-      email: 'asha.menon@example.com',
-      signedInAt: '2026-02-01T09:00:00.000Z',
-    })
-    const serialised = JSON.stringify(record).toLowerCase()
-    expect(serialised).not.toContain('password')
-    expect(serialised).not.toContain('token')
-    expect(serialised).not.toContain('secret')
-  })
-
-  it('drops empty values instead of writing blanks over CRM data', () => {
-    const record = buildContactRecord({
-      profile: { ...profile, phone: null, city: '' },
-      email: 'asha.menon@example.com',
-      signedInAt: '2026-02-01T09:00:00.000Z',
-    })
-    expect(record).not.toHaveProperty(CONTACT_FIELD_MAP.phone)
-    expect(record).not.toHaveProperty(CONTACT_FIELD_MAP.city)
-  })
-
-  it('is deterministic, so retries produce an identical payload', () => {
-    const args = {
-      profile,
-      email: 'asha.menon@example.com',
-      signedInAt: '2026-02-01T09:00:00.000Z',
-    }
-    expect(buildContactRecord(args)).toEqual(buildContactRecord(args))
-  })
-})
 
 describe('formatQuoteItems', () => {
   it('renders one numbered line per item', () => {
@@ -218,12 +127,10 @@ describe('zoho client configuration', () => {
       ZOHO_REFRESH_TOKEN: 'refresh',
       ZOHO_ACCOUNTS_URL: 'https://accounts.zoho.in/',
       ZOHO_API_DOMAIN: 'https://www.zohoapis.in/',
-      ZOHO_CRM_MODULE: 'Contacts',
     })
 
     expect(config.accountsUrl).toBe('https://accounts.zoho.in')
     expect(config.apiDomain).toBe('https://www.zohoapis.in')
-    expect(config.contactModule).toBe('Contacts')
     expect(config.quoteModule).toBe('Leads')
   })
 
@@ -251,7 +158,6 @@ describe('zoho client configuration', () => {
       refreshToken: 'refresh',
       accountsUrl: 'https://accounts.zoho.in',
       apiDomain: 'https://www.zohoapis.in',
-      contactModule: 'Contacts',
       quoteModule: 'Leads',
     })
 

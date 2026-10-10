@@ -1,11 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import {
-  fieldErrors,
-  quoteRequestSchema,
-  sanitize,
-  signUpSchema,
-} from '@/lib/validation/schemas'
+import { fieldErrors, quoteRequestSchema, sanitize } from '@/lib/validation/schemas'
 
 const validQuote = {
   firstName: 'Asha',
@@ -14,24 +9,13 @@ const validQuote = {
   email: 'Asha.Menon@Example.com',
   phone: '+91 98765 43210',
   city: 'Kochi',
+  customerType: 'School / College' as const,
   requirements: 'Summer uniform sets for 420 students across classes 1 to 10.',
   estimatedQuantity: 420,
   expectedDate: '2026-04-15',
   consent: true as const,
   items: [],
   source: 'quote' as const,
-}
-
-const validSignUp = {
-  firstName: 'Rahul',
-  lastName: 'Iyer',
-  email: 'rahul@example.com',
-  phone: '9876543210',
-  organization: 'Northline Hospitality',
-  customerType: 'Hospitality' as const,
-  city: 'Pune',
-  password: 'Uniforms2026',
-  consent: true as const,
 }
 
 describe('sanitize', () => {
@@ -93,6 +77,15 @@ describe('quoteRequestSchema', () => {
     ).toBe(false)
     expect(
       quoteRequestSchema.safeParse({ ...validQuote, estimatedQuantity: -5 }).success,
+    ).toBe(false)
+  })
+
+  it('requires a customer type so the enquiry can be routed', () => {
+    const { customerType: _omitted, ...withoutType } = validQuote
+    expect(quoteRequestSchema.safeParse(withoutType).success).toBe(false)
+    expect(
+      quoteRequestSchema.safeParse({ ...validQuote, customerType: 'Spaceship crew' })
+        .success,
     ).toBe(false)
   })
 
@@ -160,49 +153,6 @@ describe('quoteRequestSchema', () => {
   })
 })
 
-describe('signUpSchema', () => {
-  it('accepts a complete registration', () => {
-    expect(signUpSchema.safeParse(validSignUp).success).toBe(true)
-  })
-
-  it('requires at least ten password characters', () => {
-    const result = signUpSchema.safeParse({ ...validSignUp, password: 'Short1' })
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(fieldErrors(result.error).password).toMatch(/at least 10/i)
-    }
-  })
-
-  it('requires mixed case and a digit in the password', () => {
-    expect(
-      signUpSchema.safeParse({ ...validSignUp, password: 'alllowercase1' }).success,
-    ).toBe(false)
-    expect(
-      signUpSchema.safeParse({ ...validSignUp, password: 'NoDigitsHere' }).success,
-    ).toBe(false)
-  })
-
-  it('rejects an unknown customer type', () => {
-    const result = signUpSchema.safeParse({
-      ...validSignUp,
-      customerType: 'Spaceship crew',
-    })
-    expect(result.success).toBe(false)
-  })
-
-  it('requires the privacy consent checkbox', () => {
-    const result = signUpSchema.safeParse({ ...validSignUp, consent: false })
-    expect(result.success).toBe(false)
-  })
-
-  it('never leaks the password through fieldErrors', () => {
-    const result = signUpSchema.safeParse({ ...validSignUp, password: 'bad' })
-    expect(result.success).toBe(false)
-    if (!result.success) {
-      expect(JSON.stringify(fieldErrors(result.error))).not.toContain('bad')
-    }
-  })
-})
 
 describe('honeypot', () => {
   it('accepts a filled honeypot at the schema level so the route can discard it silently', () => {

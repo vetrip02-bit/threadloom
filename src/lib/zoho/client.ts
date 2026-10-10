@@ -1,12 +1,6 @@
 import 'server-only'
 
-import {
-  buildContactRecord,
-  buildQuoteRecord,
-  CONTACT_FIELD_MAP,
-  type ContactSyncSource,
-  type ZohoRecord,
-} from './mapping'
+import { buildQuoteRecord, type ZohoRecord } from './mapping'
 import type { QuoteRequestInput } from '@/lib/validation/schemas'
 
 /**
@@ -27,7 +21,6 @@ export interface ZohoConfig {
   refreshToken: string
   accountsUrl: string
   apiDomain: string
-  contactModule: string
   quoteModule: string
 }
 
@@ -62,7 +55,6 @@ export function readZohoConfig(env: Record<string, string | undefined> = process
     refreshToken: required('ZOHO_REFRESH_TOKEN'),
     accountsUrl: (env.ZOHO_ACCOUNTS_URL || '').replace(/\/$/, ''),
     apiDomain: (env.ZOHO_API_DOMAIN || '').replace(/\/$/, ''),
-    contactModule: env.ZOHO_CRM_MODULE || 'Contacts',
     quoteModule: env.ZOHO_QUOTE_MODULE || 'Leads',
   }
 
@@ -239,34 +231,6 @@ async function crmWrite(
   }
 
   return { ok: true, id: first?.details?.id, action: first?.action }
-}
-
-/**
- * Creates or updates a CRM contact keyed on email.
- *
- * Idempotent: repeated calls for the same address update the same record
- * rather than creating duplicates, so it is safe to retry and safe to call on
- * every sign-in.
- */
-export async function upsertContact(
-  source: ContactSyncSource,
-  config: ZohoConfig = readZohoConfig(),
-): Promise<CrmWriteResult> {
-  const record = buildContactRecord(source)
-
-  // `Email` is the duplicate key whenever the module exposes it. Modules
-  // without an Email field fall back to a plain insert.
-  const emailField = CONTACT_FIELD_MAP.email
-  const supportsEmailKey = Boolean(emailField && record[emailField])
-
-  return crmWrite(
-    config.contactModule,
-    supportsEmailKey
-      ? { data: [record], duplicate_check_fields: [emailField] }
-      : { data: [record] },
-    'POST',
-    config,
-  )
 }
 
 /**

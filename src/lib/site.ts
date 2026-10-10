@@ -12,15 +12,26 @@ export const BRAND = {
     'Wholesale uniforms, custom branding and bulk-order support for schools, corporate teams, hospitality, events and sports.',
 } as const
 
-/** TODO(owner): replace every placeholder below with your real details. */
+/**
+ * Public contact details.
+ *
+ * These are read from the environment so a deployment can be given real
+ * details without a code change - and so the "email or call us directly"
+ * fallback on the enquiry forms always shows something a customer can act on.
+ */
 export const CONTACT = {
-  email: '[sales@yourdomain.com]',
-  phone: '[+91 00000 00000]',
-  whatsapp: '[+91 00000 00000]',
-  addressLines: ['[Unit / Street]', '[Area, City]', '[State – PIN]', 'India'],
-  gstin: '[GSTIN — add once available]',
-  hours: '[Mon–Sat, 10:00–18:00 IST]',
+  email: process.env.NEXT_PUBLIC_CONTACT_EMAIL?.trim() || '[sales@yourdomain.com]',
+  phone: process.env.NEXT_PUBLIC_CONTACT_PHONE?.trim() || '[+91 00000 00000]',
+  whatsapp: process.env.NEXT_PUBLIC_CONTACT_PHONE?.trim() || '[+91 00000 00000]',
+  addressLines: (process.env.NEXT_PUBLIC_CONTACT_ADDRESS?.trim() || '[Unit / Street]|[Area, City]|[State - PIN]|India').split('|'),
+  gstin: process.env.NEXT_PUBLIC_GSTIN?.trim() || '[GSTIN - add once available]',
+  hours: process.env.NEXT_PUBLIC_CONTACT_HOURS?.trim() || '[Mon-Sat, 10:00-18:00 IST]',
 } as const
+
+/** True once a real contact email has been configured. */
+export const HAS_REAL_CONTACT_EMAIL = Boolean(
+  process.env.NEXT_PUBLIC_CONTACT_EMAIL?.trim(),
+)
 
 /** TODO(owner): replace the `#` placeholders with your real profile URLs. */
 export const SOCIAL = [

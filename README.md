@@ -9,8 +9,8 @@ anywhere in the application.
 - **Styling:** Tailwind CSS 3, Poppins via `next/font/google`
 - **Icons:** lucide-react
 - **Validation:** Zod (server-side on every endpoint, and client-side for fast feedback)
-- **Auth:** Supabase Auth (email + password) with a protected `profiles` table
-- **CRM:** Zoho CRM REST API v8 over OAuth 2.0, server-side only
+- **Enquiry delivery:** Resend REST API, server-side only — **required**
+- **CRM:** Zoho CRM REST API v8 over OAuth 2.0, server-side only — *optional*
 
 ---
 
@@ -19,10 +19,10 @@ anywhere in the application.
 1. [Quick start](#1-quick-start)
 2. [Image assets](#2-image-assets)
 3. [Environment variables](#3-environment-variables)
-4. [Supabase setup](#4-supabase-setup)
-5. [Zoho CRM setup](#5-zoho-crm-setup)
+4. [Enquiry delivery setup (required)](#4-enquiry-delivery-setup-required)
+5. [Zoho CRM setup (optional)](#5-zoho-crm-setup-optional)
 6. [Finding Zoho Field API Names](#6-finding-zoho-field-api-names)
-7. [Testing the CRM sync safely](#7-testing-the-crm-sync-safely)
+7. [Testing delivery safely](#7-testing-delivery-safely)
 8. [Scripts](#8-scripts)
 9. [Deployment](#9-deployment)
 10. [Security notes](#10-security-notes)
@@ -39,13 +39,18 @@ cp .env.example .env.local   # then fill in the values
 npm run dev                  # http://localhost:3000
 ```
 
-The site **builds and runs with no credentials at all**. Supabase and Zoho are
-both optional at build time:
+The site builds and browses with no credentials, but **enquiry delivery is not
+optional**:
 
 | Not configured | What happens |
 | --- | --- |
-| Supabase | Sign-in / sign-up render a neutral "accounts are not connected yet" notice. Everything else works. |
-| Zoho | Quote enquiries still return success to the visitor; the server logs a warning so nothing is silently lost. |
+| Resend (`RESEND_API_KEY` + `ENQUIRY_TO_EMAIL`) | The quote API returns **503** and the form tells the visitor to email or call instead. It never reports success for an enquiry nobody will receive. |
+| Zoho | Enquiries still arrive by email; the CRM copy is simply skipped. |
+| Contact details | The site shows obvious `[bracketed]` placeholders. |
+
+> **There are no customer accounts.** The site is enquiry-led: a visitor builds
+> a quote bag and submits it. Nothing is stored server-side, no passwords
+> exist, and there is no sign-in.
 
 ---
 
@@ -81,34 +86,39 @@ Every image also carries descriptive `alt` text (edit it in
 
 ## 3. Environment variables
 
-Copy `.env.example` to `.env.local`. Only the two `NEXT_PUBLIC_` Supabase keys
-are ever exposed to the browser.
+Copy `.env.example` to `.env.local`.
 
-### Public
+### Required
 
 | Variable | Purpose |
 | --- | --- |
-| `NEXT_PUBLIC_SITE_URL` | Canonical origin, used for metadata, Open Graph, sitemap and canonicals. |
-| `NEXT_PUBLIC_SUPABASE_URL` | Supabase project URL. |
-| `NEXT_PUBLIC_SUPABASE_ANON_KEY` | Supabase anon/publishable key. Safe to expose — RLS is what protects the data. |
+| `RESEND_API_KEY` | Resend API key. **Without it the quote form refuses enquiries.** |
+| `ENQUIRY_TO_EMAIL` | Inbox that receives enquiries. |
+
+### Public — exposed in the browser bundle
+
+| Variable | Purpose |
+| --- | --- |
+| `NEXT_PUBLIC_SITE_URL` | Canonical origin for metadata, Open Graph, sitemap and canonicals. |
+| `NEXT_PUBLIC_ALLOW_INDEXING` | Must be exactly `"true"` to allow search engines. Anything else serves site-wide `noindex`. |
+| `NEXT_PUBLIC_CONTACT_EMAIL` / `_PHONE` / `_ADDRESS` / `_HOURS` / `NEXT_PUBLIC_GSTIN` | Public contact details. Address lines are pipe-separated. |
+
+These are safe to expose — they are the same details already printed in the
+site footer.
 
 ### Server only — never prefix with `NEXT_PUBLIC_`
 
 | Variable | Purpose |
 | --- | --- |
-| `ZOHO_CLIENT_ID` | OAuth client id. |
-| `ZOHO_CLIENT_SECRET` | OAuth client secret. |
-| `ZOHO_REFRESH_TOKEN` | Long-lived refresh token. |
-| `ZOHO_ACCOUNTS_URL` | Accounts host for **your** data centre (see the table below). |
-| `ZOHO_API_DOMAIN` | Fallback API domain. Only used when Zoho's token response omits `api_domain`. |
-| `ZOHO_CRM_MODULE` | Module that receives registered customers. Default `Contacts`. |
-| `ZOHO_QUOTE_MODULE` | Module that receives quote enquiries. Default `Leads`. |
-| `ZOHO_DEBUG` | Set to `1` to log redacted Zoho response codes while wiring up. Leave unset in production. |
+| `ENQUIRY_FROM_EMAIL` | Sender address. Defaults to Resend's sandbox sender. |
+| `ZOHO_CLIENT_ID` / `_SECRET` / `_REFRESH_TOKEN` | Optional Zoho OAuth credentials. |
+| `ZOHO_ACCOUNTS_URL` / `ZOHO_API_DOMAIN` | Your Zoho data centre (table below). |
+| `ZOHO_QUOTE_MODULE` | Module receiving enquiries. Default `Leads`. |
+| `ZOHO_DEBUG` | `1` logs redacted Zoho response codes. Unset in production. |
 
-### Data centre URLs
+### Zoho data centre URLs
 
-Zoho is regional. Use the pair that matches where your CRM account lives — the
-account you signed up with, not where you happen to be.
+Zoho is regional. Use the pair matching where your CRM account lives.
 
 | Region | `ZOHO_ACCOUNTS_URL` | `ZOHO_API_DOMAIN` |
 | --- | --- | --- |
@@ -120,49 +130,58 @@ account you signed up with, not where you happen to be.
 | Canada | `https://accounts.zohocloud.ca` | `https://www.zohoapis.ca` |
 | Saudi Arabia | `https://accounts.zoho.sa` | `https://www.zohoapis.sa` |
 
-> A mismatched data centre is the single most common cause of
-> `INVALID_TOKEN` / `invalid_client`. The server prefers the `api_domain` Zoho
-> returns with each access token, so the data centre is never hard-coded.
+> A mismatched data centre is the most common cause of `INVALID_TOKEN`. The
+> server prefers the `api_domain` Zoho returns, so it is never hard-coded.
 
----
+## 4. Enquiry delivery setup (required)
 
-## 4. Supabase setup
+Without this, the quote form cannot deliver anything and deliberately refuses
+to accept enquiries. Two values are needed.
 
-1. Create a project at [supabase.com](https://supabase.com).
-2. **Project Settings → API** — copy the **Project URL** and the **anon public**
-   key into `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
-3. **SQL Editor → New query** — paste the whole of
-   [`supabase/schema.sql`](supabase/schema.sql) and run it. It creates:
-   - a `customer_type` enum,
-   - the `public.profiles` table keyed to `auth.users(id)`,
-   - **Row Level Security** policies so a user can only read and write their
-     own row,
-   - an `on_auth_user_created` trigger that seeds the profile from the sign-up
-     metadata,
-   - a trigger that keeps `profiles.email` in step with a verified email change,
-   - an `updated_at` touch trigger.
-4. **Authentication → Providers → Email** — enable it. Keep **Confirm email**
-   on for production; the sign-up form already handles the
-   "check your inbox" state.
-5. **Authentication → URL Configuration** — set the Site URL to your real
-   origin and add `http://localhost:3000` as an additional redirect URL for
-   local development.
+1. Create a free account at [resend.com](https://resend.com).
+2. **API Keys → Create API Key**. Copy the `re_...` value into
+   `RESEND_API_KEY` in `.env.local`.
+3. Set `ENQUIRY_TO_EMAIL` to the inbox that should receive enquiries.
 
-### Why profile data travels as auth metadata
+```bash
+RESEND_API_KEY=re_xxxxxxxxxxxx
+ENQUIRY_TO_EMAIL=sales@yourdomain.com
+```
 
-The sign-up form passes the non-secret profile fields through
-`supabase.auth.signUp({ options: { data } })`. The database trigger reads them
-from `raw_user_meta_data` and writes the profile row in the same transaction as
-the user row, so a confirmed sign-up can never leave an account without a
-profile.
+### About the sender address
 
-**The password is never part of that metadata.** It goes straight to Supabase
-Auth, is hashed there, and is never read, logged, stored by this application or
-forwarded to Zoho.
+`ENQUIRY_FROM_EMAIL` defaults to Resend's shared sandbox sender,
+`onboarding@resend.dev`. **The sandbox sender can only deliver to the email
+address that owns the Resend account.** That is fine for testing, but for
+production:
 
----
+1. **Domains → Add Domain** in Resend, and add the DNS records it gives you.
+2. Set `ENQUIRY_FROM_EMAIL=enquiries@yourdomain.com`.
 
-## 5. Zoho CRM setup
+### What arrives
+
+One email per enquiry, plain text and HTML, with the reference number and
+organization in the subject line. **Reply-to is set to the customer's own
+address**, so hitting reply in your inbox answers them directly.
+
+### Contact details
+
+Set these so the site stops showing placeholders — and so the "email or call us
+directly" fallback gives customers something real when delivery fails:
+
+```bash
+NEXT_PUBLIC_CONTACT_EMAIL=sales@yourdomain.com
+NEXT_PUBLIC_CONTACT_PHONE=+91XXXXXXXXXX
+NEXT_PUBLIC_CONTACT_ADDRESS=Unit 4|MG Road|Kochi - 682016|India
+NEXT_PUBLIC_CONTACT_HOURS=Mon-Sat, 10:00-18:00 IST
+NEXT_PUBLIC_GSTIN=32XXXXXXXXXXXZX
+```
+
+## 5. Zoho CRM setup (optional)
+
+**Skip this entirely if you do not use Zoho CRM.** Enquiries already reach your
+inbox by email; Zoho just files a second copy as a CRM record. A CRM outage
+never affects the customer — the email has already been sent by that point.
 
 ### Create a server-based OAuth client
 
@@ -214,36 +233,34 @@ are unit-testable with no network and no secrets.
 Edit `src/lib/zoho/mapping.ts`. The keys on the left are internal; **the values
 on the right are Zoho Field API Names and are the only thing you should change.**
 
-**Contacts** (standard fields, work out of the box):
+Enquiries default to the stock **Leads** layout, with the full enquiry
+(including a structured item summary) written to `Description`:
 
 | Internal | Zoho API Name |
 | --- | --- |
 | `firstName` | `First_Name` |
 | `lastName` | `Last_Name` *(required by Zoho)* |
-| `email` | `Email` — taken from the authenticated session, never the request body |
+| `company` | `Company` *(required on stock Leads)* |
+| `email` | `Email` |
 | `phone` | `Phone` |
-| `city` | `Mailing_City` |
-| `leadSource` | `Lead_Source` → `"Website Registration"` |
+| `city` | `City` |
+| `description` | `Description` |
+| `leadSource` | `Lead_Source` → `"Website Quote Request"` |
 
-> `Lead_Source` is a standard field, but **"Website Registration" is not a stock
-> picklist value.** Add it under *Setup → Customization → Modules and Fields →
-> Contacts → Lead Source*, or set `leadSource` to `null`. Writing an unknown
+> `Lead_Source` is standard, but `"Website Quote Request"` is **not** a stock
+> picklist value. Add it under *Setup → Customization → Modules and Fields →
+> Leads → Lead Source*, or set `leadSource` to `null`. Writing an unknown
 > picklist value makes Zoho reject the whole record.
 
 **Optional custom fields — all `null` until you create them in Zoho:**
 
-| Internal | Suggested Zoho field | Suggested API Name |
+| Internal | Suggested field type | Suggested API Name |
 | --- | --- | --- |
-| `organization` | Single Line | `Organization_Name` |
-| `customerType` | Pick List | `Customer_Type` |
-| `supabaseUserId` | Single Line | `Supabase_User_ID` |
+| `estimatedQuantity` | Number | `Estimated_Quantity` |
+| `expectedDate` | Date | `Expected_Delivery_Date` |
+| `requirements` | Multi Line | `Requirements` |
+| `itemsSummary` | Multi Line | `Quote_Items` |
 | `consentTimestamp` | Date/Time | `Consent_Timestamp` |
-| `lastWebsiteSignIn` | Date/Time | `Last_Website_Sign_In` |
-
-**Quote enquiries** default to the stock **Leads** layout, with the full enquiry
-(including a structured item summary) written to `Description`. Optional custom
-fields — `estimatedQuantity`, `expectedDate`, `requirements`, `itemsSummary`,
-`consentTimestamp` — are `null` until you map them.
 
 Quote items are sent as a concise text block, one numbered line per item, until
 you configure a dedicated CRM subform. Swap `formatQuoteItems` for a subform
@@ -271,7 +288,7 @@ The **API Name** is shown in the field properties panel.
 **C. Through the API** (needs `ZohoCRM.settings.fields.READ`):
 
 ```bash
-curl -s "https://www.zohoapis.in/crm/v8/settings/fields?module=Contacts" \
+curl -s "https://www.zohoapis.in/crm/v8/settings/fields?module=Leads" \
   -H "Authorization: Zoho-oauthtoken YOUR_ACCESS_TOKEN" \
   | python3 -c "import json,sys; [print(f\"{f['api_name']:<34} {f['field_label']}\") for f in json.load(sys.stdin)['fields']]"
 ```
@@ -284,47 +301,44 @@ a field that exists but is not on the layout will be rejected.
 
 ---
 
-## 7. Testing the CRM sync safely
+## 7. Testing delivery safely
 
-**Do this in a sandbox or a free developer org before you point it at
-production CRM data.**
+**Test enquiry delivery first — it is the one thing that must never fail
+silently.**
 
-1. Create a [free Zoho CRM developer edition](https://www.zoho.com/crm/developer/)
-   account, or use *Setup → Developer Space → Sandbox* on a paid plan.
-2. Generate a separate client id / secret / refresh token **against that org**
-   and put them in `.env.local`. Never reuse production credentials locally.
-3. Set `ZOHO_DEBUG=1` to log redacted response codes.
-4. Run through the flows:
+```bash
+npm run dev
+```
 
-   ```bash
-   npm run dev
-   ```
+Verify all three delivery states:
 
-   - **Quote:** add items to the quote bag, submit `/quote`, and confirm a Lead
-     appears with the enquiry in `Description`.
-   - **Sign-up:** create an account, confirm the email, sign in, and confirm one
-     Contact appears.
-   - **Idempotency:** sign out and sign in again. The **same** Contact must be
-     updated — if a second one appears, `Email` is not acting as the duplicate
-     key on your module, so check `CONTACT_FIELD_MAP.email`.
-5. Verify the endpoint cannot be driven from the browser:
+1. **Unconfigured.** With `RESEND_API_KEY` unset, submit the quote form. You
+   must get an on-page "Your enquiry was not sent" panel with your email and
+   phone as clickable links, and:
 
    ```bash
-   curl -X POST http://localhost:3000/api/crm/sync-contact \
-     -H 'Content-Type: application/json' \
-     -d '{"email":"attacker@example.com"}'
-   # -> 401 {"ok":false,"status":"unauthenticated"}
+   curl -s -X POST http://localhost:3000/api/quote \
+     -H 'Content-Type: application/json' -d '{ ...valid enquiry... }'
+   # -> HTTP 503 {"ok":false,"code":"delivery_unavailable",...}
    ```
 
-   Identity comes only from the Supabase session cookie; the body is ignored
-   entirely.
-6. Simulate an outage — set `ZOHO_REFRESH_TOKEN` to rubbish and sign in again.
-   **Sign-in must still succeed**, the response is a neutral
-   `{"ok":false,"status":"deferred"}`, and the server log shows a redacted
-   error. Restore the token and sign in again to confirm the retry lands.
-7. Clear `ZOHO_DEBUG` before deploying.
+2. **Broken key.** Set `RESEND_API_KEY=re_invalid` and resubmit — expect
+   **HTTP 502** `delivery_failed`, the same fallback panel, and a server log
+   line with the key redacted. **Never a success screen.**
 
----
+3. **Working.** Set the real key and submit. The email must land in
+   `ENQUIRY_TO_EMAIL` within seconds, with the reference in the subject and
+   reply-to set to the customer's address. Hit reply and confirm it addresses
+   the customer, not yourself.
+
+### Zoho (only if configured)
+
+Use a [free Zoho developer edition](https://www.zoho.com/crm/developer/) or a
+sandbox before touching production CRM data, and generate separate credentials
+for it. Set `ZOHO_DEBUG=1`, submit an enquiry, and confirm a Lead appears with
+the enquiry in `Description`. Then break the refresh token deliberately and
+confirm the enquiry **still succeeds** — the email has already been sent, so a
+CRM failure is logged and swallowed.
 
 ## 8. Scripts
 
@@ -339,9 +353,9 @@ production CRM data.**
 | `npm run test:watch` | Vitest in watch mode |
 
 The test suite covers Zod validation (including the honeypot and consent gates)
-and the Zoho payload builders (field mapping, empty-value omission,
-determinism across retries, and assertions that no credential or password ever
-enters a payload).
+the email path (configuration gaps, rendering, HTML escaping, and that a
+provider failure throws rather than returning success) and the Zoho payload
+builders. All network calls and secrets are mocked.
 
 ---
 
@@ -361,16 +375,17 @@ npx vercel --prod
 Then, in the Vercel dashboard:
 
 1. **Settings → Environment Variables** — add every variable from
-   `.env.example`. Put the Zoho values in **all** environments you deploy, and
-   double-check none of them start with `NEXT_PUBLIC_`.
+   `.env.example`. **`RESEND_API_KEY` and `ENQUIRY_TO_EMAIL` are mandatory**;
+   without them the deployed quote form refuses every enquiry. Double-check
+   none of the server-only values start with `NEXT_PUBLIC_`.
 2. Set **`NEXT_PUBLIC_SITE_URL`** to the production origin. The sitemap,
    canonical tags and Open Graph URLs are derived from it.
    *(Without it the app falls back to Vercel's injected `VERCEL_URL`, and
    finally to `http://localhost:3000`.)*
 3. Set **`NEXT_PUBLIC_ALLOW_INDEXING=true`** only once the placeholder content
    is replaced — see §12. Until then the whole site serves `noindex`.
-4. Add the production origin to **Supabase → Authentication → URL
-   Configuration**.
+4. Submit a real enquiry against the deployed site and confirm it lands in
+   your inbox. Do not consider the deploy finished until it does.
 
 ### Temporary / anonymous deployment
 
@@ -388,9 +403,10 @@ Two caveats specific to anonymous deployments:
   canonical tags and the sitemap fall back to `http://localhost:3000`. This is
   cosmetic while the site is `noindex`, and resolves itself on a claimed or
   logged-in deployment.
-- Supabase and Zoho stay unconfigured, so sign-in shows the
-  "accounts are not connected" notice and quote enquiries are accepted but not
-  pushed to the CRM.
+- No environment variables means no `RESEND_API_KEY`, so **the quote form
+  refuses every enquiry** with the "email or call us directly" fallback. An
+  anonymous deployment is a visual preview only, never a working lead-capture
+  site.
 
 > **Rate limiting is per-instance.** `src/lib/rate-limit.ts` holds counters in
 > process memory, which protects a single server but not a fleet of serverless
@@ -401,29 +417,30 @@ Two caveats specific to anonymous deployments:
 
 ## 10. Security notes
 
-- **Zoho credentials are server-only.** `src/lib/zoho/client.ts` imports
-  `server-only`, so importing it from a client component is a build error, not
-  a runtime leak. No Zoho value is ever prefixed `NEXT_PUBLIC_`.
-- **Passwords never leave Supabase Auth.** They are not stored, logged,
-  included in CRM payloads or echoed in validation errors (there is a test for
-  the last one).
-- **Identity is server-derived.** `/api/crm/sync-contact` calls
-  `supabase.auth.getUser()` — which revalidates with Supabase — and reads the
-  profile server-side under RLS. Nothing in the request body is trusted.
-- **CRM failure never blocks a user.** Sync errors return a neutral body and
-  log a redacted message. The upsert is idempotent and safe to retry.
+- **Provider credentials are server-only.** `src/lib/email/send.ts` and
+  `src/lib/zoho/client.ts` both import `server-only`, so importing either from
+  a client component is a build error, not a runtime leak.
+- **No passwords exist.** There are no accounts, no sessions and no
+  credentials of any kind belonging to visitors.
+- **An enquiry is never reported as delivered unless it was.** If the mail
+  provider is unconfigured or fails, the API returns 503/502 and the form shows
+  the customer how to reach a human. This is covered by tests.
+- **Enquiry content is HTML-escaped** before it enters the email body, so a
+  hostile submission cannot inject markup into your inbox.
+- **CRM failure never blocks a customer** — the email has already been sent by
+  the time Zoho is attempted, so a CRM error is logged and swallowed.
 - **Upstream errors are not forwarded.** Zoho response bodies stay server-side;
-  the browser gets a generic message. `redactForLog` strips `1000.*` tokens and
-  `client_secret` / `refresh_token` / `access_token` values before anything is
-  logged.
+  the browser gets a generic message. `redactForLog` strips `1000.*` Zoho tokens and
+  `client_secret` / `refresh_token` / `access_token` values, and
+  `redactEmailError` strips `re_*` Resend keys, before anything is logged.
 - **Every endpoint validates with Zod** and is rate-limited (5 enquiries per IP
-  per 10 minutes; 10 CRM syncs per IP per 5 minutes), with a request-size cap
+  per 10 minutes), with a request-size cap
   and a honeypot field. A filled honeypot receives a **normal success
   response** so bots learn nothing.
 - **Security headers** (`X-Content-Type-Options`, `Referrer-Policy`,
   `X-Frame-Options`) are set in `next.config.mjs`.
-- `/account`, `/signin`, `/signup` and `/api/` are excluded from the sitemap and
-  disallowed in `robots.txt`.
+- `/api/` is disallowed in `robots.txt`, and the whole site serves `noindex`
+  until `NEXT_PUBLIC_ALLOW_INDEXING=true`.
 
 ---
 
@@ -437,31 +454,30 @@ src/
 │   ├── uniforms/                   Listing + [slug] category pages (SSG)
 │   ├── industries/  customization/  about/  contact/
 │   ├── quote/                      Quote builder page
-│   ├── signin/  signup/  account/  privacy/  terms/
-│   ├── api/quote/route.ts          Public enquiry endpoint
-│   ├── api/crm/sync-contact/       Authenticated CRM sync
+│   ├── privacy/  terms/
+│   ├── api/quote/route.ts          The only endpoint. Delivers or refuses.
 │   ├── not-found.tsx  error.tsx  sitemap.ts  robots.ts
 ├── components/
 │   ├── layout/    AnnouncementBar, Header, MobileMenu, SearchPanel, Footer
 │   ├── home/      Hero, TrustStrip, CategoryGrid, ProductGrid, ProcessSteps, …
 │   ├── catalog/   ProductCard, Breadcrumbs
-│   ├── quote/     QuoteProvider, QuoteDrawer, QuoteForm, EnquiryForm
-│   ├── auth/      AuthProvider, AuthModal, SignInForm, SignUpForm
+│   ├── quote/     QuoteProvider, QuoteDrawer, QuoteForm, EnquiryForm,
+│   │              DeliveryFallback
 │   └── ui/        Button, Section, Field, Overlay, PageHeader, LegalPage
 ├── data/catalog.ts                 ← all editable product/category seed data
 ├── lib/
-│   ├── site.ts                     ← all editable brand and contact placeholders
-│   ├── supabase/                   client / server / env
-│   ├── zoho/                       client.ts + mapping.ts
+│   ├── site.ts                     ← brand + env-driven contact details
+│   ├── email/                      config.ts, render.ts, send.ts  (required)
+│   ├── zoho/                       client.ts + mapping.ts        (optional)
 │   ├── validation/schemas.ts       Zod schemas, shared by client and server
 │   ├── rate-limit.ts  utils.ts
-├── types/index.ts
-└── middleware.ts                   Session refresh + /account guard
+└── types/index.ts
 ```
 
 **Product markup is not duplicated.** One `ProductCard` renders every product
 everywhere; the homepage, the listing page and each category page all map over
-the same typed data in `src/data/catalog.ts`.
+the same typed data in `src/data/catalog.ts`. Both enquiry forms share one
+`DeliveryFallback`, so a failure looks the same everywhere.
 
 ### Design system
 
@@ -502,7 +518,7 @@ as `Offer` data would misrepresent them. Add it once you publish real prices.
 
 | Where | What |
 | --- | --- |
-| `src/lib/site.ts` → `CONTACT` | `email`, `phone`, `whatsapp`, `addressLines`, `gstin`, `hours` — all bracketed placeholders |
+| Environment | Contact details now come from `NEXT_PUBLIC_CONTACT_*`; unset values render as `[bracketed]` placeholders |
 | `src/lib/site.ts` → `SOCIAL` | Four `#` placeholders → your real profile URLs |
 | `src/components/layout/Header.tsx` | Text wordmark → your logo (marked `TODO(owner)`) |
 | `src/components/layout/Footer.tsx` | Same wordmark placeholder |
@@ -510,6 +526,8 @@ as `Offer` data would misrepresent them. Add it once you publish real prices.
 | `src/components/catalog/ProductCard.tsx` | The typographic colour-swatch placeholder → your product photography (marked `TODO(owner)`) |
 | `src/app/about/page.tsx` | Placeholder company story — there is an on-page notice flagging it |
 | `src/app/privacy/page.tsx` | Retention period, plus a legal review |
+| `.env.local` / Vercel env | `RESEND_API_KEY` + `ENQUIRY_TO_EMAIL` — **without these the quote form refuses every enquiry** |
+| `.env.local` / Vercel env | `NEXT_PUBLIC_CONTACT_EMAIL` and `_PHONE` — shown to customers when delivery fails |
 | `src/app/terms/page.tsx` | Governing-law jurisdiction, plus a legal review |
 | `.env.local` | Every credential |
 

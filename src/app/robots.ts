@@ -18,7 +18,7 @@ export default function robots(): MetadataRoute.Robots {
         userAgent: '*',
         allow: '/',
         // Private and transactional routes stay out of the index.
-        disallow: ['/account', '/signin', '/signup', '/api/'],
+        disallow: ['/api/'],
       },
     ],
     sitemap: SITE_URL + '/sitemap.xml',

@@ -6,13 +6,11 @@ import {
   useContext,
   useEffect,
   useMemo,
-  useRef,
   useState,
 } from 'react'
 import type { QuoteItem } from '@/types'
 
-const GUEST_KEY = 'uniform-quote-bag:guest'
-const userKey = (userId: string) => 'uniform-quote-bag:' + userId
+const BAG_KEY = 'uniform-quote-bag'
 
 interface QuoteContextValue {
   items: QuoteItem[]
@@ -27,8 +25,6 @@ interface QuoteContextValue {
   updateItem: (key: string, patch: Partial<Omit<QuoteItem, 'key'>>) => void
   removeItem: (key: string) => void
   clear: () => void
-  /** Merges the guest bag into the signed-in user's bag. */
-  mergeGuestBag: (userId: string) => void
 }
 
 const QuoteContext = createContext<QuoteContextValue | null>(null)
@@ -68,16 +64,15 @@ export function QuoteProvider({ children }: { children: React.ReactNode }) {
   const [items, setItems] = useState<QuoteItem[]>([])
   const [hydrated, setHydrated] = useState(false)
   const [isDrawerOpen, setDrawerOpen] = useState(false)
-  const storageKey = useRef(GUEST_KEY)
 
   useEffect(() => {
-    setItems(readBag(GUEST_KEY))
+    setItems(readBag(BAG_KEY))
     setHydrated(true)
   }, [])
 
   useEffect(() => {
     if (!hydrated) return
-    writeBag(storageKey.current, items)
+    writeBag(BAG_KEY, items)
   }, [items, hydrated])
 
   const addItem = useCallback((item: Omit<QuoteItem, 'key'>) => {
@@ -109,33 +104,6 @@ export function QuoteProvider({ children }: { children: React.ReactNode }) {
 
   const clear = useCallback(() => setItems([]), [])
 
-  /**
-   * On sign-in, fold anything the guest collected into the account's own bag
-   * and switch the storage key so future writes belong to that account.
-   */
-  const mergeGuestBag = useCallback((userId: string) => {
-    const target = userKey(userId)
-    if (storageKey.current === target) return
-
-    const guest = readBag(GUEST_KEY)
-    const stored = readBag(target)
-    const merged = [...stored]
-
-    for (const item of guest) {
-      const match = merged.find((i) => i.key === item.key)
-      if (match) match.quantity += item.quantity
-      else merged.push(item)
-    }
-
-    storageKey.current = target
-    try {
-      window.localStorage.removeItem(GUEST_KEY)
-    } catch {
-      // ignore
-    }
-    writeBag(target, merged)
-    setItems(merged)
-  }, [])
 
   const value = useMemo<QuoteContextValue>(
     () => ({
@@ -150,9 +118,8 @@ export function QuoteProvider({ children }: { children: React.ReactNode }) {
       updateItem,
       removeItem,
       clear,
-      mergeGuestBag,
     }),
-    [items, hydrated, isDrawerOpen, addItem, updateItem, removeItem, clear, mergeGuestBag],
+    [items, hydrated, isDrawerOpen, addItem, updateItem, removeItem, clear],
   )
 
   return <QuoteContext.Provider value={value}>{children}</QuoteContext.Provider>

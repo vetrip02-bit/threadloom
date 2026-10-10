@@ -67,48 +67,6 @@ export const brandingMethodSchema = z.enum(BRANDING_METHODS, {
   errorMap: () => ({ message: 'Select a branding method.' }),
 })
 
-export const passwordSchema = z
-  .string({ required_error: 'Password is required.' })
-  .min(10, 'Use at least 10 characters.')
-  .max(128, 'Password is too long.')
-  .regex(/[a-z]/, 'Include at least one lowercase letter.')
-  .regex(/[A-Z]/, 'Include at least one uppercase letter.')
-  .regex(/\d/, 'Include at least one number.')
-
-/** Create-account form. The password never leaves Supabase Auth. */
-export const signUpSchema = z.object({
-  firstName: cleanString(1, 60, 'First name'),
-  lastName: cleanString(1, 60, 'Last name'),
-  email: emailSchema,
-  phone: phoneSchema,
-  organization: cleanString(2, 120, 'Organization'),
-  customerType: customerTypeSchema,
-  city: cleanString(2, 80, 'City'),
-  password: passwordSchema,
-  consent: z.literal(true, {
-    errorMap: () => ({
-      message: 'Please accept the privacy policy to create an account.',
-    }),
-  }),
-})
-export type SignUpInput = z.infer<typeof signUpSchema>
-
-export const signInSchema = z.object({
-  email: emailSchema,
-  password: z.string().min(1, 'Password is required.').max(128),
-})
-export type SignInInput = z.infer<typeof signInSchema>
-
-export const profileUpdateSchema = z.object({
-  firstName: cleanString(1, 60, 'First name'),
-  lastName: cleanString(1, 60, 'Last name'),
-  phone: phoneSchema,
-  organization: cleanString(2, 120, 'Organization'),
-  customerType: customerTypeSchema,
-  city: cleanString(2, 80, 'City'),
-})
-export type ProfileUpdateInput = z.infer<typeof profileUpdateSchema>
-
 export const quoteItemSchema = z.object({
   productId: cleanString(1, 64, 'Product'),
   productName: cleanString(1, 120, 'Product name'),
@@ -132,6 +90,8 @@ export const quoteRequestSchema = z.object({
   email: emailSchema,
   phone: phoneSchema,
   city: cleanString(2, 80, 'City'),
+  /** Routes the enquiry to the right sales desk. */
+  customerType: customerTypeSchema,
   requirements: cleanString(10, 2000, 'Requirements'),
   estimatedQuantity: z.coerce
     .number({ invalid_type_error: 'Enter an estimated quantity.' })

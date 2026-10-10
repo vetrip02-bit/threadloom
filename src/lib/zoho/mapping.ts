@@ -1,9 +1,13 @@
 import type { QuoteRequestInput } from '@/lib/validation/schemas'
-import type { Profile } from '@/types'
 
 /**
  * ---------------------------------------------------------------------------
- * ZOHO CRM FIELD MAPPING
+ * ZOHO CRM FIELD MAPPING (optional integration)
+ *
+ * Enquiries are delivered by email first - see src/lib/email. Zoho is a
+ * bonus: if it is configured, each enquiry is also filed as a CRM record.
+ * A CRM outage never affects the customer.
+ * ---------------------------------------------------------------------------
  * ---------------------------------------------------------------------------
  * The keys on the LEFT of each entry are OUR internal names. The values on the
  * RIGHT are Zoho CRM **Field API Names**, and they are the only thing you
@@ -21,38 +25,6 @@ import type { Profile } from '@/types'
  *
  * Set any entry to `null` to leave that field out of the payload entirely.
  */
-export const CONTACT_FIELD_MAP = {
-  /** Standard fields - present on every stock Contacts layout. */
-  firstName: 'First_Name',
-  lastName: 'Last_Name',
-  email: 'Email',
-  phone: 'Phone',
-  city: 'Mailing_City',
-
-  /**
-   * `Lead_Source` is standard on Contacts, but "Website Registration" is NOT a
-   * stock picklist value. Add it under
-   *   Setup -> Customization -> Modules and Fields -> Contacts -> Lead Source,
-   * or set this to null. Writing an unknown picklist value makes Zoho reject
-   * the whole record.
-   */
-  leadSource: 'Lead_Source',
-
-  /**
-   * ------------------------------------------------------------------
-   * OPTIONAL CUSTOM FIELDS - create these in Zoho first, then paste the
-   * exact API names here. Until you do, leave them as null.
-   * ------------------------------------------------------------------
-   */
-  organization: null as string | null, // e.g. 'Organization_Name'
-  customerType: null as string | null, // e.g. 'Customer_Type'
-  supabaseUserId: null as string | null, // e.g. 'Supabase_User_ID'
-  consentTimestamp: null as string | null, // e.g. 'Consent_Timestamp'
-  lastWebsiteSignIn: null as string | null, // e.g. 'Last_Website_Sign_In'
-} as const
-
-/** Only written when `CONTACT_FIELD_MAP.leadSource` is set. */
-export const LEAD_SOURCE_VALUE = 'Website Registration'
 
 /**
  * Quote enquiries. The defaults target the stock **Leads** module. Point
@@ -93,51 +65,6 @@ function put(
   record[apiName] = value
 }
 
-export interface ContactSyncSource {
-  profile: Pick<
-    Profile,
-    | 'id'
-    | 'first_name'
-    | 'last_name'
-    | 'phone'
-    | 'organization'
-    | 'customer_type'
-    | 'city'
-    | 'consent_at'
-  >
-  /** Always taken from the authenticated session, never from the request body. */
-  email: string
-  /** ISO timestamp of the sign-in that triggered this sync. */
-  signedInAt: string
-}
-
-/**
- * Builds the Contacts upsert payload. Pure and side-effect free so it can be
- * unit-tested without touching the network.
- */
-export function buildContactRecord(source: ContactSyncSource): ZohoRecord {
-  const { profile, email, signedInAt } = source
-  const record: ZohoRecord = {}
-
-  put(record, CONTACT_FIELD_MAP.firstName, profile.first_name)
-  // Last_Name is mandatory in Zoho; fall back to the local-part of the email.
-  put(
-    record,
-    CONTACT_FIELD_MAP.lastName,
-    profile.last_name?.trim() || email.split('@')[0] || 'Customer',
-  )
-  put(record, CONTACT_FIELD_MAP.email, email)
-  put(record, CONTACT_FIELD_MAP.phone, profile.phone)
-  put(record, CONTACT_FIELD_MAP.city, profile.city)
-  put(record, CONTACT_FIELD_MAP.leadSource, LEAD_SOURCE_VALUE)
-  put(record, CONTACT_FIELD_MAP.organization, profile.organization)
-  put(record, CONTACT_FIELD_MAP.customerType, profile.customer_type)
-  put(record, CONTACT_FIELD_MAP.supabaseUserId, profile.id)
-  put(record, CONTACT_FIELD_MAP.consentTimestamp, profile.consent_at)
-  put(record, CONTACT_FIELD_MAP.lastWebsiteSignIn, signedInAt)
-
-  return record
-}
 
 /**
  * Renders the quote bag as a compact plain-text block.

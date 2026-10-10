@@ -6,7 +6,6 @@ import { AnnouncementBar } from '@/components/layout/AnnouncementBar'
 import { Header } from '@/components/layout/Header'
 import { Footer } from '@/components/layout/Footer'
 import { QuoteProvider } from '@/components/quote/QuoteProvider'
-import { AuthProvider } from '@/components/auth/AuthProvider'
 import { ALLOW_INDEXING, BRAND, CONTACT, SITE_URL } from '@/lib/site'
 
 const poppins = Poppins({
@@ -86,19 +85,17 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
           type="application/ld+json"
           dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd()) }}
         />
-        <AuthProvider>
-          <QuoteProvider>
-            <a href="#main" className="skip-link">
-              Skip to main content
-            </a>
-            <AnnouncementBar />
-            <Header />
-            <main id="main" tabIndex={-1}>
-              {children}
-            </main>
-            <Footer />
-          </QuoteProvider>
-        </AuthProvider>
+        <QuoteProvider>
+          <a href="#main" className="skip-link">
+            Skip to main content
+          </a>
+          <AnnouncementBar />
+          <Header />
+          <main id="main" tabIndex={-1}>
+            {children}
+          </main>
+          <Footer />
+        </QuoteProvider>
       </body>
     </html>
   )

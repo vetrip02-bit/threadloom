@@ -5,13 +5,11 @@ import { ChevronRight, X } from 'lucide-react'
 
 import { BRAND, NAV_LINKS } from '@/lib/site'
 import { CATEGORIES } from '@/data/catalog'
-import { useAuth } from '@/components/auth/AuthProvider'
 import { Scrim, useModalBehaviour } from '@/components/ui/Overlay'
 import { ButtonLink } from '@/components/ui/Button'
 
 export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const containerRef = useModalBehaviour(open, onClose)
-  const { user } = useAuth()
 
   if (!open) return null
 
@@ -79,13 +77,8 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
           <ButtonLink href="/quote" className="w-full" onClick={onClose}>
             Request a Quote
           </ButtonLink>
-          <ButtonLink
-            href={user ? '/account' : '/signin'}
-            variant="ghost"
-            className="w-full"
-            onClick={onClose}
-          >
-            {user ? 'My account' : 'Sign in or create account'}
+          <ButtonLink href="/contact" variant="ghost" className="w-full" onClick={onClose}>
+            Contact us
           </ButtonLink>
         </div>
       </div>

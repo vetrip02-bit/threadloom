@@ -2,14 +2,18 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react'
+import { CheckCircle2, Loader2 } from 'lucide-react'
 
 import {
   CheckboxField,
+  SelectField,
   TextAreaField,
   TextField,
 } from '@/components/ui/Field'
+import { CUSTOMER_TYPES } from '@/data/catalog'
+import type { CustomerType } from '@/types'
 import { Button } from '@/components/ui/Button'
+import { DeliveryFallback } from '@/components/quote/DeliveryFallback'
 import { todayIso } from '@/lib/utils'
 
 type Status = 'idle' | 'submitting' | 'success' | 'error'
@@ -21,6 +25,7 @@ const INITIAL = {
   email: '',
   phone: '',
   city: '',
+  customerType: '' as CustomerType | '',
   requirements: '',
   estimatedQuantity: '',
   expectedDate: '',
@@ -132,20 +137,7 @@ export function EnquiryForm({
       <fieldset disabled={status === 'submitting'} className="space-y-6">
         <legend className="sr-only">Enquiry details</legend>
 
-        {formError ? (
-          <div
-            role="alert"
-            className="flex items-start gap-3 rounded-[8px] border border-burgundy/35 bg-burgundy/5 p-4"
-          >
-            <AlertCircle
-              size={18}
-              strokeWidth={1.8}
-              className="mt-0.5 shrink-0 text-burgundy"
-              aria-hidden="true"
-            />
-            <p className="text-[13.5px] leading-6 text-navy">{formError}</p>
-          </div>
-        ) : null}
+        {formError ? <DeliveryFallback message={formError} /> : null}
 
         <div className="grid gap-5 sm:grid-cols-2">
           <TextField
@@ -226,6 +218,16 @@ export function EnquiryForm({
           value={values.expectedDate}
           error={errors.expectedDate}
           onChange={(e) => set('expectedDate', e.target.value)}
+        />
+
+        <SelectField
+          label="Customer type"
+          required
+          placeholder="Select the closest match"
+          options={CUSTOMER_TYPES}
+          value={values.customerType}
+          error={errors.customerType}
+          onChange={(e) => set('customerType', e.target.value as CustomerType)}
         />
 
         <TextAreaField

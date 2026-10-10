@@ -28,7 +28,7 @@ export default function PrivacyPage() {
         </p>
         <ul>
           <li>Your name, organization, business email, phone number and city.</li>
-          <li>The customer type you select when creating an account.</li>
+          <li>The customer type you select on the enquiry form.</li>
           <li>
             The details of your enquiry: garments, quantities, sizes, colours, branding
             preferences, notes and any expected delivery date.
@@ -41,32 +41,24 @@ export default function PrivacyPage() {
       </section>
 
       <section>
-        <h2>Passwords</h2>
-        <p>
-          Account passwords are handled entirely by our authentication provider
-          (Supabase Auth) and are stored by them in hashed form. We do not see, store,
-          log or transmit your password, and it is never sent to our CRM or to any
-          other third party.
-        </p>
-      </section>
-
-      <section>
         <h2>Why we hold it</h2>
         <p>
           To prepare and send quotes, to produce and deliver orders, to keep a record
           of what was approved for repeat orders, and to meet tax and accounting
-          obligations.
+          obligations. We do not operate customer accounts on this website, so we
+          hold no passwords of any kind.
         </p>
       </section>
 
       <section>
         <h2>Who we share it with</h2>
         <p>
-          Your contact details and enquiry summary are stored in our customer
-          relationship management system (Zoho CRM) so the sales team can respond and
-          keep a history of the conversation. We also use a hosting provider and an
-          authentication provider to run this website. We do not sell your data, and we
-          do not share it for advertising.
+          When you submit an enquiry it is delivered to our sales inbox through an
+          email delivery provider. If our customer relationship management system is
+          connected, a copy of the enquiry is also filed there so the sales team can
+          keep a history of the conversation. We also use a hosting provider to run
+          this website. We do not sell your data, and we do not share it for
+          advertising.
         </p>
       </section>
 
@@ -99,9 +91,9 @@ export default function PrivacyPage() {
       <section>
         <h2>Cookies</h2>
         <p>
-          This site sets a session cookie when you sign in, which is required for the
-          account area to work. Your quote bag is stored in your own browser&rsquo;s
-          local storage and is not transmitted to us until you submit an enquiry.
+          This site sets no tracking or advertising cookies. Your quote bag is stored
+          in your own browser&rsquo;s local storage and is not transmitted to us until
+          you submit an enquiry.
         </p>
       </section>
 
