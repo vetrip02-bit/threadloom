@@ -30,8 +30,33 @@ export const SOCIAL = [
   { label: 'YouTube', href: '#' },
 ] as const
 
-export const SITE_URL =
-  process.env.NEXT_PUBLIC_SITE_URL?.replace(/\/$/, '') || 'http://localhost:3000'
+/**
+ * Canonical origin, in order of preference:
+ *   1. NEXT_PUBLIC_SITE_URL  - set this to your custom domain in production.
+ *   2. The Vercel-provided deployment URL, so preview and first-time
+ *      deployments produce correct canonicals, Open Graph URLs and sitemap
+ *      entries without any manual configuration.
+ *   3. localhost, for local development.
+ */
+function resolveSiteUrl(): string {
+  const explicit = process.env.NEXT_PUBLIC_SITE_URL?.trim().replace(/\/$/, '')
+  if (explicit) return explicit
+
+  const vercelHost = (
+    process.env.NEXT_PUBLIC_VERCEL_PROJECT_PRODUCTION_URL ||
+    process.env.NEXT_PUBLIC_VERCEL_URL ||
+    process.env.VERCEL_URL ||
+    ''
+  )
+    .trim()
+    .replace(/^https?:\/\//, '')
+    .replace(/\/$/, '')
+  if (vercelHost) return 'https://' + vercelHost
+
+  return 'http://localhost:3000'
+}
+
+export const SITE_URL = resolveSiteUrl()
 
 /**
  * Search-engine indexing is OFF unless explicitly enabled.
