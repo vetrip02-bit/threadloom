@@ -45,5 +45,9 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
+  // The Node.js runtime keeps the middleware on the same runtime as the rest
+  // of the app. The Edge runtime is deprecated and is rejected outright by
+  // anonymous Vercel deployments.
+  runtime: 'nodejs',
   matcher: ['/((?!_next/static|_next/image|images|favicon.ico|.*\\.png$|.*\\.svg$).*)'],
 }
