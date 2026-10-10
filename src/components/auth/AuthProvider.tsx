@@ -12,6 +12,12 @@ import type { Session, User } from '@supabase/supabase-js'
 
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
 import { ACCOUNTS_ENABLED } from '@/lib/supabase/env'
+import {
+  clearLocalProfile,
+  isLocalProfileComplete,
+  readLocalProfile,
+  type LocalProfile,
+} from '@/lib/local-profile'
 import type { Profile } from '@/types'
 
 interface AuthContextValue {
@@ -21,6 +27,18 @@ interface AuthContextValue {
   /** False when this deployment has no Supabase project configured. */
   enabled: boolean
   signOut: () => Promise<void>
+
+  /**
+   * Device-local details, used only when `enabled` is false. Not an account:
+   * no password, no server, this browser only.
+   */
+  localProfile: LocalProfile | null
+  localProfileComplete: boolean
+  refreshLocalProfile: () => void
+  forgetLocalProfile: () => void
+
+  /** Name to greet the customer with, from whichever source is in play. */
+  displayName: string | null
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null)
@@ -28,7 +46,23 @@ const AuthContext = createContext<AuthContextValue | null>(null)
 export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null)
   const [profile, setProfile] = useState<Profile | null>(null)
-  const [loading, setLoading] = useState(ACCOUNTS_ENABLED)
+  const [loading, setLoading] = useState(true)
+  const [localProfile, setLocalProfile] = useState<LocalProfile | null>(null)
+
+  const refreshLocalProfile = useCallback(() => {
+    setLocalProfile(readLocalProfile())
+  }, [])
+
+  const forgetLocalProfile = useCallback(() => {
+    clearLocalProfile()
+    setLocalProfile(null)
+  }, [])
+
+  // localStorage is only readable in the browser, so this runs after mount.
+  useEffect(() => {
+    refreshLocalProfile()
+    if (!ACCOUNTS_ENABLED) setLoading(false)
+  }, [refreshLocalProfile])
 
   useEffect(() => {
     const supabase = getSupabaseBrowserClient()
@@ -84,9 +118,33 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setProfile(null)
   }, [])
 
+  const displayName = user
+    ? profile?.first_name?.trim() || user.email?.split('@')[0] || null
+    : localProfile?.firstName?.trim() || null
+
   const value = useMemo<AuthContextValue>(
-    () => ({ user, profile, loading, enabled: ACCOUNTS_ENABLED, signOut }),
-    [user, profile, loading, signOut],
+    () => ({
+      user,
+      profile,
+      loading,
+      enabled: ACCOUNTS_ENABLED,
+      signOut,
+      localProfile,
+      localProfileComplete: isLocalProfileComplete(localProfile),
+      refreshLocalProfile,
+      forgetLocalProfile,
+      displayName,
+    }),
+    [
+      user,
+      profile,
+      loading,
+      signOut,
+      localProfile,
+      refreshLocalProfile,
+      forgetLocalProfile,
+      displayName,
+    ],
   )
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>

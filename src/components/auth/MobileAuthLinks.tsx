@@ -8,10 +8,46 @@ import { ButtonLink } from '@/components/ui/Button'
 
 /** Log in / Sign up inside the mobile drawer. Hidden when accounts are off. */
 export function MobileAuthLinks({ onNavigate }: { onNavigate: () => void }) {
-  const { user, profile, loading, enabled, signOut } = useAuth()
+  const { user, profile, loading, enabled, signOut, displayName, forgetLocalProfile } =
+    useAuth()
   const returnTo = useReturnTo()
 
-  if (!enabled || loading) return null
+  if (loading) return null
+
+  // No Supabase project: offer the device-local alternative instead of hiding.
+  if (!enabled) {
+    return (
+      <div className="space-y-3">
+        {displayName ? (
+          <p className="truncate text-[12.5px] text-charcoal">
+            Details saved for{' '}
+            <span className="font-medium text-navy">{displayName}</span>
+            <span className="block text-charcoal/80">this device only</span>
+          </p>
+        ) : null}
+        <ButtonLink
+          href="/my-details"
+          variant="secondary"
+          className="w-full"
+          onClick={onNavigate}
+        >
+          {displayName ? 'Edit my details' : 'Save my details'}
+        </ButtonLink>
+        {displayName ? (
+          <button
+            type="button"
+            onClick={() => {
+              onNavigate()
+              forgetLocalProfile()
+            }}
+            className="h-10 w-full text-[13px] text-charcoal underline-offset-4 transition-colors hover:text-burgundy hover:underline"
+          >
+            Forget my details
+          </button>
+        ) : null}
+      </div>
+    )
+  }
 
   if (!user) {
     const next = '?next=' + encodeURIComponent(returnTo)

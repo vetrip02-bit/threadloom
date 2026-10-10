@@ -4,9 +4,11 @@ import { safeRedirect } from '@/lib/safe-redirect'
 import {
   EMPTY_CONTACT,
   isContactComplete,
+  prefillFromLocalProfile,
   prefillFromProfile,
   type ContactFields,
 } from '@/lib/profile-prefill'
+import { isLocalProfileComplete } from '@/lib/local-profile'
 import { signUpSchema, fieldErrors } from '@/lib/validation/schemas'
 import type { Profile } from '@/types'
 
@@ -176,5 +178,71 @@ describe('signUpSchema', () => {
     if (!result.success) {
       expect(JSON.stringify(fieldErrors(result.error))).not.toContain('hunter2')
     }
+  })
+})
+
+describe('prefillFromLocalProfile', () => {
+  const local = {
+    firstName: 'Ravi',
+    lastName: 'Kumar',
+    organization: 'Northline Hospitality',
+    email: 'ravi@example.com',
+    phone: '+919876543210',
+    city: 'Pune',
+    customerType: 'Hospitality' as const,
+    savedAt: '2026-02-01T09:00:00.000Z',
+  }
+
+  it('fills every contact field from device-saved details', () => {
+    const result = prefillFromLocalProfile(local)
+    expect(result.firstName).toBe('Ravi')
+    expect(result.organization).toBe('Northline Hospitality')
+    expect(result.email).toBe('ravi@example.com')
+    expect(result.customerType).toBe('Hospitality')
+  })
+
+  it('never overwrites something already typed', () => {
+    const result = prefillFromLocalProfile(local, {
+      ...EMPTY_CONTACT,
+      city: 'Chennai',
+    })
+    expect(result.city).toBe('Chennai')
+    expect(result.firstName).toBe('Ravi')
+  })
+
+  it('leaves the form untouched when nothing is saved', () => {
+    expect(prefillFromLocalProfile(null)).toEqual(EMPTY_CONTACT)
+  })
+
+  it('produces a complete contact, so the quote form can collapse it', () => {
+    expect(isContactComplete(prefillFromLocalProfile(local))).toBe(true)
+  })
+
+  it('stays incomplete when a saved field is blank', () => {
+    const partial = prefillFromLocalProfile({ ...local, city: '' })
+    expect(isContactComplete(partial)).toBe(false)
+  })
+})
+
+describe('isLocalProfileComplete', () => {
+  const full = {
+    firstName: 'Ravi',
+    lastName: 'Kumar',
+    organization: 'Northline',
+    email: 'ravi@example.com',
+    phone: '+919876543210',
+    city: 'Pune',
+    customerType: 'Hospitality' as const,
+    savedAt: '',
+  }
+
+  it('is true for a fully filled profile', () => {
+    expect(isLocalProfileComplete(full)).toBe(true)
+  })
+
+  it('is false when anything is missing or blank', () => {
+    expect(isLocalProfileComplete(null)).toBe(false)
+    expect(isLocalProfileComplete({ ...full, customerType: '' })).toBe(false)
+    expect(isLocalProfileComplete({ ...full, phone: '   ' })).toBe(false)
   })
 })

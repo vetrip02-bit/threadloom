@@ -16,7 +16,11 @@ import { Button, ButtonLink } from '@/components/ui/Button'
 import { DeliveryFallback } from '@/components/quote/DeliveryFallback'
 import { useAuth } from '@/components/auth/AuthProvider'
 import { SignedInContact } from '@/components/quote/SignedInContact'
-import { isContactComplete, prefillFromProfile } from '@/lib/profile-prefill'
+import {
+  isContactComplete,
+  prefillFromLocalProfile,
+  prefillFromProfile,
+} from '@/lib/profile-prefill'
 import { formatQuantity, todayIso } from '@/lib/utils'
 import { submitEnquiry } from '@/lib/enquiry'
 import { quoteRequestSchema, fieldErrors } from '@/lib/validation/schemas'
@@ -40,7 +44,7 @@ const INITIAL = {
 
 export function QuoteForm() {
   const { items, removeItem, updateItem, totalPieces, clear } = useQuote()
-  const { user, profile, loading: authLoading } = useAuth()
+  const { user, profile, localProfile, loading: authLoading } = useAuth()
   const [values, setValues] = useState(INITIAL)
   /** True once the customer chooses to edit the prefilled details. */
   const [editingContact, setEditingContact] = useState(false)
@@ -56,10 +60,9 @@ export function QuoteForm() {
    * safe to re-run when the profile arrives after the first render.
    */
   useEffect(() => {
-    if (!user) return
-    setValues((current) => ({
-      ...current,
-      ...prefillFromProfile(profile, user.email, {
+    if (!user && !localProfile) return
+    setValues((current) => {
+      const typed = {
         firstName: current.firstName,
         lastName: current.lastName,
         organization: current.organization,
@@ -67,9 +70,14 @@ export function QuoteForm() {
         phone: current.phone,
         city: current.city,
         customerType: current.customerType,
-      }),
-    }))
-  }, [user, profile])
+      }
+      // A real account always wins over device-local details.
+      const filled = user
+        ? prefillFromProfile(profile, user.email, typed)
+        : prefillFromLocalProfile(localProfile, typed)
+      return { ...current, ...filled }
+    })
+  }, [user, profile, localProfile])
 
   const contact = {
     firstName: values.firstName,
@@ -85,7 +93,10 @@ export function QuoteForm() {
    * instead of retyping them. Everyone else gets the full fieldset.
    */
   const showContactSummary =
-    Boolean(user) && !authLoading && !editingContact && isContactComplete(contact)
+    Boolean(user || localProfile) &&
+    !authLoading &&
+    !editingContact &&
+    isContactComplete(contact)
 
   function set<K extends keyof typeof INITIAL>(key: K, value: (typeof INITIAL)[K]) {
     setValues((current) => ({ ...current, [key]: value }))
@@ -193,7 +204,11 @@ export function QuoteForm() {
           {formError ? <DeliveryFallback message={formError} /> : null}
 
           {showContactSummary ? (
-            <SignedInContact contact={contact} onEdit={() => setEditingContact(true)} />
+            <SignedInContact
+              contact={contact}
+              onEdit={() => setEditingContact(true)}
+              source={user ? 'account' : 'device'}
+            />
           ) : (
             <>
             <div className="grid gap-5 sm:grid-cols-2">
@@ -345,7 +360,7 @@ export function QuoteForm() {
                 >
                   privacy policy
                 </Link>
-                . My details may be stored in the company CRM to handle this request.
+                .
               </>
             }
           />

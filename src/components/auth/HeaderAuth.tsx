@@ -22,21 +22,104 @@ export function useReturnTo(): string {
 }
 
 export function HeaderAuth() {
-  const { user, profile, loading, enabled, signOut } = useAuth()
+  const { user, loading, enabled, signOut, displayName, forgetLocalProfile } =
+    useAuth()
   const returnTo = useReturnTo()
   const [menuOpen, setMenuOpen] = useState(false)
 
-  // Accounts are not configured on this deployment: show nothing at all rather
-  // than a button that leads to a page that cannot work.
-  if (!enabled) return null
-
-  // Hold the space while the session resolves, so the header does not jump.
+  // Hold the space while state resolves, so the header does not jump.
   if (loading) {
     return (
       <div
         aria-hidden="true"
         className="hidden h-10 w-[150px] animate-pulse rounded-[6px] bg-ivory md:block"
       />
+    )
+  }
+
+  /*
+   * No Supabase project on this deployment. Rather than hiding the control
+   * entirely, offer the device-local alternative - visible and useful, and
+   * honestly labelled: it saves details to this browser, it is not a login.
+   */
+  if (!enabled) {
+    if (displayName) {
+      return (
+        <div className="relative hidden md:block">
+          <button
+            type="button"
+            onClick={() => setMenuOpen((open) => !open)}
+            aria-expanded={menuOpen}
+            aria-haspopup="menu"
+            className="inline-flex h-10 max-w-[180px] items-center gap-2 rounded-[6px] px-3 text-[13px] font-medium text-navy transition-colors hover:bg-ivory"
+          >
+            <User size={17} strokeWidth={1.7} aria-hidden="true" />
+            <span className="truncate">{displayName}</span>
+            <ChevronDown
+              size={14}
+              strokeWidth={2}
+              aria-hidden="true"
+              className={cn('transition-transform duration-200', menuOpen && 'rotate-180')}
+            />
+          </button>
+
+          {menuOpen ? (
+            <>
+              <div
+                className="fixed inset-0 z-40"
+                aria-hidden="true"
+                onClick={() => setMenuOpen(false)}
+              />
+              <div
+                role="menu"
+                className="absolute right-0 top-12 z-50 w-60 animate-fade-up rounded-card border border-hairline bg-white p-1.5 shadow-lifted"
+              >
+                <p className="px-3 py-2 text-[12px] leading-5 text-charcoal/80">
+                  Saved on this device only
+                </p>
+                <Link
+                  href="/my-details"
+                  role="menuitem"
+                  onClick={() => setMenuOpen(false)}
+                  className="block rounded-[6px] px-3 py-2.5 text-[13.5px] text-navy transition-colors hover:bg-ivory"
+                >
+                  Edit my details
+                </Link>
+                <Link
+                  href="/quote"
+                  role="menuitem"
+                  onClick={() => setMenuOpen(false)}
+                  className="block rounded-[6px] px-3 py-2.5 text-[13.5px] text-navy transition-colors hover:bg-ivory"
+                >
+                  Request a quote
+                </Link>
+                <button
+                  type="button"
+                  role="menuitem"
+                  onClick={() => {
+                    setMenuOpen(false)
+                    forgetLocalProfile()
+                  }}
+                  className="flex w-full items-center gap-2 rounded-[6px] border-t border-hairline px-3 py-2.5 text-left text-[13.5px] text-navy transition-colors hover:bg-ivory"
+                >
+                  <LogOut size={15} strokeWidth={1.7} aria-hidden="true" />
+                  Forget my details
+                </button>
+              </div>
+            </>
+          ) : null}
+        </div>
+      )
+    }
+
+    return (
+      <Link
+        href="/my-details"
+        className="hidden h-10 items-center gap-2 rounded-[6px] border border-navy px-4 text-[13px] font-medium text-navy transition-colors hover:bg-navy hover:text-white md:inline-flex"
+      >
+        <User size={16} strokeWidth={1.7} aria-hidden="true" />
+        Save my details
+      </Link>
     )
   }
 
@@ -59,8 +142,6 @@ export function HeaderAuth() {
       </div>
     )
   }
-
-  const displayName = profile?.first_name?.trim() || user.email?.split('@')[0] || 'Account'
 
   return (
     <div className="relative hidden md:block">

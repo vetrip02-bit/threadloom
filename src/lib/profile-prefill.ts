@@ -1,5 +1,6 @@
 import type { Profile } from '@/types'
 import type { CustomerType } from '@/types'
+import type { LocalProfile } from '@/lib/local-profile'
 
 /** The contact fields a quote form shares with a saved profile. */
 export interface ContactFields {
@@ -64,4 +65,32 @@ export function isContactComplete(contact: ContactFields): boolean {
     contact.city.trim() !== '' &&
     contact.customerType !== ''
   )
+}
+
+/**
+ * Maps device-local saved details onto the same contact fields.
+ *
+ * Separate from `prefillFromProfile` because the shapes differ: a Supabase
+ * profile has nullable snake_case columns, a local one has plain strings.
+ * Both funnel into the identical `ContactFields` the forms consume.
+ */
+export function prefillFromLocalProfile(
+  local: LocalProfile | null,
+  current: ContactFields = EMPTY_CONTACT,
+): ContactFields {
+  if (!local) return current
+
+  const pick = (typed: string, saved: string) =>
+    typed.trim() !== '' ? typed : saved.trim()
+
+  return {
+    firstName: pick(current.firstName, local.firstName),
+    lastName: pick(current.lastName, local.lastName),
+    organization: pick(current.organization, local.organization),
+    email: pick(current.email, local.email),
+    phone: pick(current.phone, local.phone),
+    city: pick(current.city, local.city),
+    customerType:
+      current.customerType !== '' ? current.customerType : local.customerType,
+  }
 }
