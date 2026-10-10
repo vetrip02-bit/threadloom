@@ -7,6 +7,7 @@ import { BRAND, NAV_LINKS } from '@/lib/site'
 import { CATEGORIES } from '@/data/catalog'
 import { Scrim, useModalBehaviour } from '@/components/ui/Overlay'
 import { ButtonLink } from '@/components/ui/Button'
+import { MobileAuthLinks } from '@/components/auth/MobileAuthLinks'
 
 export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => void }) {
   const containerRef = useModalBehaviour(open, onClose)
@@ -77,9 +78,7 @@ export function MobileMenu({ open, onClose }: { open: boolean; onClose: () => vo
           <ButtonLink href="/quote" className="w-full" onClick={onClose}>
             Request a Quote
           </ButtonLink>
-          <ButtonLink href="/contact" variant="ghost" className="w-full" onClick={onClose}>
-            Contact us
-          </ButtonLink>
+          <MobileAuthLinks onNavigate={onClose} />
         </div>
       </div>
     </>

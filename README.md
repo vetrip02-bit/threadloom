@@ -10,6 +10,7 @@ anywhere in the application.
 - **Icons:** lucide-react
 - **Validation:** Zod (server-side on every endpoint, and client-side for fast feedback)
 - **Enquiry delivery:** Resend REST API, server-side only — **required**
+- **Accounts:** Supabase Auth with an RLS-protected `profiles` table — *optional*
 - **CRM:** Zoho CRM REST API v8 over OAuth 2.0, server-side only — *optional*
 
 ---
@@ -48,9 +49,18 @@ optional**:
 | Zoho | Enquiries still arrive by email; the CRM copy is simply skipped. |
 | Contact details | The site shows obvious `[bracketed]` placeholders. |
 
-> **There are no customer accounts.** The site is enquiry-led: a visitor builds
-> a quote bag and submits it. Nothing is stored server-side, no passwords
-> exist, and there is no sign-in.
+| Supabase | The account system is **hidden entirely** — no Log in / Sign up buttons, and `/signin`, `/signup`, `/account` return 404. Guest quoting is unaffected. |
+
+### Two ways to enquire
+
+1. **As a guest** — build a quote bag, fill in the contact fields, submit.
+   No account needed, and this path never asks anyone to register.
+2. **With an account** — **Log in** / **Sign up** in the header. After signing
+   up or logging in the customer lands back on the page they came from, and
+   their contact details are filled in automatically on every future quote.
+   They confirm rather than retype, with an **Edit** link if anything changed.
+
+A signed-in customer is never shown the registration page again.
 
 ---
 
@@ -176,6 +186,50 @@ NEXT_PUBLIC_CONTACT_ADDRESS=Unit 4|MG Road|Kochi - 682016|India
 NEXT_PUBLIC_CONTACT_HOURS=Mon-Sat, 10:00-18:00 IST
 NEXT_PUBLIC_GSTIN=32XXXXXXXXXXXZX
 ```
+
+## 4b. Customer accounts (optional)
+
+Leave `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` unset and
+the whole account system disappears — **the buttons are not rendered at all**,
+rather than leading to a form that cannot work. Guest quoting still works.
+
+To enable accounts:
+
+1. Create a free project at [supabase.com](https://supabase.com).
+2. **Project Settings → API** — copy the **Project URL** and the **anon public**
+   key into `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+3. **SQL Editor → New query** — paste all of
+   [`supabase/schema.sql`](supabase/schema.sql) and run it. It creates the
+   `profiles` table, Row Level Security policies restricting every row to its
+   owner, and a trigger that seeds the profile from the sign-up form in the
+   same transaction as the user row.
+4. **Authentication → URL Configuration** — set the Site URL to your real
+   origin and add `http://localhost:3000` as an additional redirect URL.
+5. **Authentication → Providers → Email** — decide on confirmation:
+   - **Confirm email OFF** → signing up logs the customer straight in and
+     returns them to the page they came from. Smoothest flow.
+   - **Confirm email ON** (default) → they see a "check your inbox" screen and
+     land back on the right page after clicking the link. More secure.
+
+   Both paths are implemented; pick whichever suits you.
+
+### How the return-to-page flow works
+
+Each header button carries the current path, e.g.
+`/signup?next=%2Funiforms%2Fcustom-tshirts`. After signing up or logging in the
+customer goes straight back there.
+
+That `next` value is passed through `safeRedirect()`
+(`src/lib/safe-redirect.ts`) on the server, which rejects absolute URLs,
+protocol-relative URLs, backslash and scheme tricks, and auth pages themselves.
+Without it, `?next=https://evil.example` would turn your login page into an
+open redirect for phishing. There are tests for each case.
+
+### Passwords
+
+Handled entirely by Supabase Auth and stored hashed by them. This application
+never reads, stores, logs or forwards a password, and never includes one in a
+validation error — there is a test asserting the last point.
 
 ## 5. Zoho CRM setup (optional)
 

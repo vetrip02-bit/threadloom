@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { CheckCircle2, Loader2, Trash2 } from 'lucide-react'
 
@@ -14,6 +14,9 @@ import {
 } from '@/components/ui/Field'
 import { Button, ButtonLink } from '@/components/ui/Button'
 import { DeliveryFallback } from '@/components/quote/DeliveryFallback'
+import { useAuth } from '@/components/auth/AuthProvider'
+import { SignedInContact } from '@/components/quote/SignedInContact'
+import { isContactComplete, prefillFromProfile } from '@/lib/profile-prefill'
 import { formatQuantity, todayIso } from '@/lib/utils'
 import type { BrandingMethod, CustomerType } from '@/types'
 
@@ -35,12 +38,52 @@ const INITIAL = {
 
 export function QuoteForm() {
   const { items, removeItem, updateItem, totalPieces, clear } = useQuote()
+  const { user, profile, loading: authLoading } = useAuth()
   const [values, setValues] = useState(INITIAL)
+  /** True once the customer chooses to edit the prefilled details. */
+  const [editingContact, setEditingContact] = useState(false)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [status, setStatus] = useState<Status>('idle')
   const [formError, setFormError] = useState('')
   const [reference, setReference] = useState('')
   const [honeypot, setHoneypot] = useState('')
+
+  /*
+   * Fill the contact fields from the signed-in customer's saved profile.
+   * `prefillFromProfile` never overwrites something already typed, so this is
+   * safe to re-run when the profile arrives after the first render.
+   */
+  useEffect(() => {
+    if (!user) return
+    setValues((current) => ({
+      ...current,
+      ...prefillFromProfile(profile, user.email, {
+        firstName: current.firstName,
+        lastName: current.lastName,
+        organization: current.organization,
+        email: current.email,
+        phone: current.phone,
+        city: current.city,
+        customerType: current.customerType,
+      }),
+    }))
+  }, [user, profile])
+
+  const contact = {
+    firstName: values.firstName,
+    lastName: values.lastName,
+    organization: values.organization,
+    email: values.email,
+    phone: values.phone,
+    city: values.city,
+    customerType: values.customerType,
+  }
+  /*
+   * A signed-in customer with a complete profile confirms their details
+   * instead of retyping them. Everyone else gets the full fieldset.
+   */
+  const showContactSummary =
+    Boolean(user) && !authLoading && !editingContact && isContactComplete(contact)
 
   function set<K extends keyof typeof INITIAL>(key: K, value: (typeof INITIAL)[K]) {
     setValues((current) => ({ ...current, [key]: value }))
@@ -152,113 +195,119 @@ export function QuoteForm() {
 
           {formError ? <DeliveryFallback message={formError} /> : null}
 
-          <div className="grid gap-5 sm:grid-cols-2">
-            <TextField
-              label="First name"
-              name="firstName"
-              autoComplete="given-name"
-              required
-              value={values.firstName}
-              error={errors.firstName}
-              onChange={(e) => set('firstName', e.target.value)}
-            />
-            <TextField
-              label="Last name"
-              name="lastName"
-              autoComplete="family-name"
-              required
-              value={values.lastName}
-              error={errors.lastName}
-              onChange={(e) => set('lastName', e.target.value)}
-            />
-          </div>
+          {showContactSummary ? (
+            <SignedInContact contact={contact} onEdit={() => setEditingContact(true)} />
+          ) : (
+            <>
+            <div className="grid gap-5 sm:grid-cols-2">
+              <TextField
+                label="First name"
+                name="firstName"
+                autoComplete="given-name"
+                required
+                value={values.firstName}
+                error={errors.firstName}
+                onChange={(e) => set('firstName', e.target.value)}
+              />
+              <TextField
+                label="Last name"
+                name="lastName"
+                autoComplete="family-name"
+                required
+                value={values.lastName}
+                error={errors.lastName}
+                onChange={(e) => set('lastName', e.target.value)}
+              />
+            </div>
 
-          <TextField
-            label="Organization"
-            name="organization"
-            autoComplete="organization"
-            required
-            placeholder="School, company or agency name"
-            value={values.organization}
-            error={errors.organization}
-            onChange={(e) => set('organization', e.target.value)}
-          />
-
-          <div className="grid gap-5 sm:grid-cols-2">
             <TextField
-              label="Business email"
-              name="email"
-              type="email"
-              inputMode="email"
-              autoComplete="email"
+              label="Organization"
+              name="organization"
+              autoComplete="organization"
               required
-              value={values.email}
-              error={errors.email}
-              onChange={(e) => set('email', e.target.value)}
+              placeholder="School, company or agency name"
+              value={values.organization}
+              error={errors.organization}
+              onChange={(e) => set('organization', e.target.value)}
             />
-            <TextField
-              label="Phone"
-              name="phone"
-              type="tel"
-              inputMode="tel"
-              autoComplete="tel"
-              required
-              placeholder="+91 00000 00000"
-              value={values.phone}
-              error={errors.phone}
-              onChange={(e) => set('phone', e.target.value)}
-            />
-          </div>
 
-          <div className="grid gap-5 sm:grid-cols-2">
-            <TextField
-              label="City"
-              name="city"
-              autoComplete="address-level2"
-              required
-              value={values.city}
-              error={errors.city}
-              onChange={(e) => set('city', e.target.value)}
-            />
-            <TextField
-              label="Estimated quantity"
-              name="estimatedQuantity"
-              type="number"
-              inputMode="numeric"
-              min={1}
-              required
-              hint={
-                totalPieces > 0
-                  ? 'Your bag currently totals ' + formatQuantity(totalPieces) + ' pieces.'
-                  : 'Total pieces across all items.'
-              }
-              value={values.estimatedQuantity}
-              error={errors.estimatedQuantity}
-              onChange={(e) => set('estimatedQuantity', e.target.value)}
-            />
-          </div>
+            <div className="grid gap-5 sm:grid-cols-2">
+              <TextField
+                label="Business email"
+                name="email"
+                type="email"
+                inputMode="email"
+                autoComplete="email"
+                required
+                value={values.email}
+                error={errors.email}
+                onChange={(e) => set('email', e.target.value)}
+              />
+              <TextField
+                label="Phone"
+                name="phone"
+                type="tel"
+                inputMode="tel"
+                autoComplete="tel"
+                required
+                placeholder="+91 00000 00000"
+                value={values.phone}
+                error={errors.phone}
+                onChange={(e) => set('phone', e.target.value)}
+              />
+            </div>
 
-          <TextField
-            label="Expected delivery date"
-            name="expectedDate"
-            type="date"
-            min={todayIso()}
-            hint="Helps us plan production backwards from your deadline."
-            value={values.expectedDate}
-            error={errors.expectedDate}
-            onChange={(e) => set('expectedDate', e.target.value)}
-          />
+            <div className="grid gap-5 sm:grid-cols-2">
+              <TextField
+                label="City"
+                name="city"
+                autoComplete="address-level2"
+                required
+                value={values.city}
+                error={errors.city}
+                onChange={(e) => set('city', e.target.value)}
+              />
+              <TextField
+                label="Estimated quantity"
+                name="estimatedQuantity"
+                type="number"
+                inputMode="numeric"
+                min={1}
+                required
+                hint={
+                  totalPieces > 0
+                    ? 'Your bag currently totals ' + formatQuantity(totalPieces) + ' pieces.'
+                    : 'Total pieces across all items.'
+                }
+                value={values.estimatedQuantity}
+                error={errors.estimatedQuantity}
+                onChange={(e) => set('estimatedQuantity', e.target.value)}
+              />
+            </div>
 
-          <SelectField
-            label="Customer type"
-            name="customerType"
-            required
-            placeholder="Select the closest match"
-            options={CUSTOMER_TYPES}
-            value={values.customerType}
-            error={errors.customerType}
-            onChange={(e) => set('customerType', e.target.value as CustomerType)}
-          />
+            <TextField
+              label="Expected delivery date"
+              name="expectedDate"
+              type="date"
+              min={todayIso()}
+              hint="Helps us plan production backwards from your deadline."
+              value={values.expectedDate}
+              error={errors.expectedDate}
+              onChange={(e) => set('expectedDate', e.target.value)}
+            />
+
+            <SelectField
+              label="Customer type"
+              name="customerType"
+              required
+              placeholder="Select the closest match"
+              options={CUSTOMER_TYPES}
+              value={values.customerType}
+              error={errors.customerType}
+              onChange={(e) => set('customerType', e.target.value as CustomerType)}
+            />
+            </>
+          )}
 
           <TextAreaField
             label="Requirements"

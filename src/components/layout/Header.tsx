@@ -11,6 +11,7 @@ import { useQuote } from '@/components/quote/QuoteProvider'
 import { SearchPanel } from '@/components/layout/SearchPanel'
 import { MobileMenu } from '@/components/layout/MobileMenu'
 import { QuoteDrawer } from '@/components/quote/QuoteDrawer'
+import { HeaderAuth } from '@/components/auth/HeaderAuth'
 
 export function Header() {
   const pathname = usePathname()
@@ -94,6 +95,8 @@ export function Header() {
               <Search size={19} strokeWidth={1.6} aria-hidden="true" />
             </button>
 
+
+            <HeaderAuth />
 
             <button
               type="button"
