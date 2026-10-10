@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation'
 import { AlertCircle, Loader2 } from 'lucide-react'
 
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
+import { useAuth } from '@/components/auth/AuthProvider'
+import { LocalAccountNotice } from '@/components/auth/LocalAccountNotice'
 import { fieldErrors, signInSchema } from '@/lib/validation/schemas'
 import { TextField } from '@/components/ui/Field'
 import { Button } from '@/components/ui/Button'
@@ -16,6 +18,7 @@ import { Button } from '@/components/ui/Button'
  */
 export function SignInForm({ returnTo }: { returnTo: string }) {
   const router = useRouter()
+  const { localMode, logInLocal } = useAuth()
   const [values, setValues] = useState({ email: '', password: '' })
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState('')
@@ -32,13 +35,34 @@ export function SignInForm({ returnTo }: { returnTo: string }) {
       return
     }
 
-    const supabase = getSupabaseBrowserClient()
-    if (!supabase) {
-      setFormError('Accounts are unavailable right now. Please try again later.')
+    setSubmitting(true)
+
+    if (localMode) {
+      const result = await logInLocal(parsed.data.email, parsed.data.password)
+      setSubmitting(false)
+      if (!result.ok) {
+        setFormError(
+          result.reason === 'unsupported'
+            ? 'This browser does not support the security features needed to log in.'
+            : result.reason === 'storage_blocked'
+              ? 'Your browser is blocking local storage, so we cannot keep you logged in. Private-browsing windows usually do this.'
+              : // Generic: never reveal whether an address is registered.
+                'That email and password combination did not match. Please try again.',
+        )
+        return
+      }
+      router.push(returnTo)
+      router.refresh()
       return
     }
 
-    setSubmitting(true)
+    const supabase = getSupabaseBrowserClient()
+    if (!supabase) {
+      setFormError('Accounts are unavailable right now. Please try again later.')
+      setSubmitting(false)
+      return
+    }
+
     const { error } = await supabase.auth.signInWithPassword({
       email: parsed.data.email,
       password: parsed.data.password,
@@ -49,8 +73,7 @@ export function SignInForm({ returnTo }: { returnTo: string }) {
       setFormError(
         error.message === 'Email not confirmed'
           ? 'Please confirm your email address first — check your inbox for the link.'
-          : // Deliberately generic: never reveal whether an address is registered.
-            'That email and password combination did not match. Please try again.',
+          : 'That email and password combination did not match. Please try again.',
       )
       return
     }
@@ -64,6 +87,8 @@ export function SignInForm({ returnTo }: { returnTo: string }) {
 
   return (
     <form onSubmit={handleSubmit} noValidate className="space-y-5">
+      <LocalAccountNotice />
+
       {formError ? (
         <div
           role="alert"

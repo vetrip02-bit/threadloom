@@ -18,7 +18,7 @@ import { useAuth } from '@/components/auth/AuthProvider'
 import { SignedInContact } from '@/components/quote/SignedInContact'
 import {
   isContactComplete,
-  prefillFromLocalProfile,
+  prefillFromLocalAccount,
   prefillFromProfile,
 } from '@/lib/profile-prefill'
 import { todayIso } from '@/lib/utils'
@@ -61,7 +61,7 @@ export function EnquiryForm({
   successTitle: string
   successBody: string
 }) {
-  const { user, profile, localProfile, loading: authLoading } = useAuth()
+  const { user, profile, localAccount, signedIn, loading: authLoading } = useAuth()
   const [values, setValues] = useState(INITIAL)
   /** True once the customer chooses to edit the prefilled details. */
   const [editingContact, setEditingContact] = useState(false)
@@ -77,7 +77,7 @@ export function EnquiryForm({
    * safe to re-run when the profile arrives after the first render.
    */
   useEffect(() => {
-    if (!user && !localProfile) return
+    if (!signedIn) return
     setValues((current) => {
       const typed = {
         firstName: current.firstName,
@@ -91,10 +91,10 @@ export function EnquiryForm({
       // A real account always wins over device-local details.
       const filled = user
         ? prefillFromProfile(profile, user.email, typed)
-        : prefillFromLocalProfile(localProfile, typed)
+        : prefillFromLocalAccount(localAccount, typed)
       return { ...current, ...filled }
     })
-  }, [user, profile, localProfile])
+  }, [user, profile, localAccount, signedIn])
 
   const contact = {
     firstName: values.firstName,
@@ -110,7 +110,7 @@ export function EnquiryForm({
    * instead of retyping them. Everyone else gets the full fieldset.
    */
   const showContactSummary =
-    Boolean(user || localProfile) &&
+    signedIn &&
     !authLoading &&
     !editingContact &&
     isContactComplete(contact)
@@ -191,7 +191,6 @@ export function EnquiryForm({
           <SignedInContact
               contact={contact}
               onEdit={() => setEditingContact(true)}
-              source={user ? 'account' : 'device'}
             />
         ) : (
           <>

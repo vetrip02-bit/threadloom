@@ -18,7 +18,7 @@ import { useAuth } from '@/components/auth/AuthProvider'
 import { SignedInContact } from '@/components/quote/SignedInContact'
 import {
   isContactComplete,
-  prefillFromLocalProfile,
+  prefillFromLocalAccount,
   prefillFromProfile,
 } from '@/lib/profile-prefill'
 import { formatQuantity, todayIso } from '@/lib/utils'
@@ -44,7 +44,7 @@ const INITIAL = {
 
 export function QuoteForm() {
   const { items, removeItem, updateItem, totalPieces, clear } = useQuote()
-  const { user, profile, localProfile, loading: authLoading } = useAuth()
+  const { user, profile, localAccount, signedIn, loading: authLoading } = useAuth()
   const [values, setValues] = useState(INITIAL)
   /** True once the customer chooses to edit the prefilled details. */
   const [editingContact, setEditingContact] = useState(false)
@@ -60,7 +60,7 @@ export function QuoteForm() {
    * safe to re-run when the profile arrives after the first render.
    */
   useEffect(() => {
-    if (!user && !localProfile) return
+    if (!signedIn) return
     setValues((current) => {
       const typed = {
         firstName: current.firstName,
@@ -74,10 +74,10 @@ export function QuoteForm() {
       // A real account always wins over device-local details.
       const filled = user
         ? prefillFromProfile(profile, user.email, typed)
-        : prefillFromLocalProfile(localProfile, typed)
+        : prefillFromLocalAccount(localAccount, typed)
       return { ...current, ...filled }
     })
-  }, [user, profile, localProfile])
+  }, [user, profile, localAccount, signedIn])
 
   const contact = {
     firstName: values.firstName,
@@ -93,7 +93,7 @@ export function QuoteForm() {
    * instead of retyping them. Everyone else gets the full fieldset.
    */
   const showContactSummary =
-    Boolean(user || localProfile) &&
+    signedIn &&
     !authLoading &&
     !editingContact &&
     isContactComplete(contact)
@@ -207,7 +207,6 @@ export function QuoteForm() {
             <SignedInContact
               contact={contact}
               onEdit={() => setEditingContact(true)}
-              source={user ? 'account' : 'device'}
             />
           ) : (
             <>

@@ -6,50 +6,14 @@ import { useAuth } from '@/components/auth/AuthProvider'
 import { useReturnTo } from '@/components/auth/HeaderAuth'
 import { ButtonLink } from '@/components/ui/Button'
 
-/** Log in / Sign up inside the mobile drawer. Hidden when accounts are off. */
+/** Log in / Sign up inside the mobile drawer. */
 export function MobileAuthLinks({ onNavigate }: { onNavigate: () => void }) {
-  const { user, profile, loading, enabled, signOut, displayName, forgetLocalProfile } =
-    useAuth()
+  const { signedIn, displayName, email, loading, signOut } = useAuth()
   const returnTo = useReturnTo()
 
   if (loading) return null
 
-  // No Supabase project: offer the device-local alternative instead of hiding.
-  if (!enabled) {
-    return (
-      <div className="space-y-3">
-        {displayName ? (
-          <p className="truncate text-[12.5px] text-charcoal">
-            Details saved for{' '}
-            <span className="font-medium text-navy">{displayName}</span>
-            <span className="block text-charcoal/80">this device only</span>
-          </p>
-        ) : null}
-        <ButtonLink
-          href="/my-details"
-          variant="secondary"
-          className="w-full"
-          onClick={onNavigate}
-        >
-          {displayName ? 'Edit my details' : 'Save my details'}
-        </ButtonLink>
-        {displayName ? (
-          <button
-            type="button"
-            onClick={() => {
-              onNavigate()
-              forgetLocalProfile()
-            }}
-            className="h-10 w-full text-[13px] text-charcoal underline-offset-4 transition-colors hover:text-burgundy hover:underline"
-          >
-            Forget my details
-          </button>
-        ) : null}
-      </div>
-    )
-  }
-
-  if (!user) {
+  if (!signedIn) {
     const next = '?next=' + encodeURIComponent(returnTo)
     return (
       <div className="grid grid-cols-2 gap-3">
@@ -76,10 +40,8 @@ export function MobileAuthLinks({ onNavigate }: { onNavigate: () => void }) {
   return (
     <div className="space-y-3">
       <p className="truncate text-[12.5px] text-charcoal">
-        Signed in as{' '}
-        <span className="font-medium text-navy">
-          {profile?.first_name?.trim() || user.email}
-        </span>
+        Logged in as{' '}
+        <span className="font-medium text-navy">{displayName ?? email}</span>
       </p>
       <Link
         href="/account"

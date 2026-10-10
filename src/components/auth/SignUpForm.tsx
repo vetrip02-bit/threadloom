@@ -6,6 +6,8 @@ import { useRouter } from 'next/navigation'
 import { AlertCircle, CheckCircle2, Loader2 } from 'lucide-react'
 
 import { getSupabaseBrowserClient } from '@/lib/supabase/client'
+import { useAuth } from '@/components/auth/AuthProvider'
+import { LocalAccountNotice } from '@/components/auth/LocalAccountNotice'
 import { fieldErrors, signUpSchema } from '@/lib/validation/schemas'
 import { CUSTOMER_TYPES } from '@/data/catalog'
 import { CheckboxField, SelectField, TextField } from '@/components/ui/Field'
@@ -26,6 +28,7 @@ const INITIAL = {
 
 export function SignUpForm({ returnTo }: { returnTo: string }) {
   const router = useRouter()
+  const { localMode, signUpLocal } = useAuth()
   const [values, setValues] = useState(INITIAL)
   const [errors, setErrors] = useState<Record<string, string>>({})
   const [formError, setFormError] = useState('')
@@ -53,14 +56,45 @@ export function SignUpForm({ returnTo }: { returnTo: string }) {
       return
     }
 
-    const supabase = getSupabaseBrowserClient()
-    if (!supabase) {
-      setFormError('Accounts are unavailable right now. Please try again later.')
+    setSubmitting(true)
+    const input = parsed.data
+
+    if (localMode) {
+      const result = await signUpLocal({
+        email: input.email,
+        password: input.password,
+        profile: {
+          firstName: input.firstName,
+          lastName: input.lastName,
+          organization: input.organization,
+          phone: input.phone,
+          city: input.city,
+          customerType: input.customerType,
+        },
+      })
+      setSubmitting(false)
+      if (!result.ok) {
+        setFormError(
+          result.reason === 'email_taken'
+            ? 'An account already exists for that email address on this browser. Try logging in instead.'
+            : result.reason === 'unsupported'
+              ? 'This browser does not support the security features needed to create an account.'
+              : 'Your browser is blocking local storage, so the account could not be saved. Private-browsing windows usually do this.',
+        )
+        return
+      }
+      // Signed up and logged in: straight back to shopping.
+      router.push(returnTo)
+      router.refresh()
       return
     }
 
-    setSubmitting(true)
-    const input = parsed.data
+    const supabase = getSupabaseBrowserClient()
+    if (!supabase) {
+      setFormError('Accounts are unavailable right now. Please try again later.')
+      setSubmitting(false)
+      return
+    }
 
     /*
      * Non-secret profile fields travel as auth metadata so the database
@@ -137,6 +171,8 @@ export function SignUpForm({ returnTo }: { returnTo: string }) {
 
   return (
     <form onSubmit={handleSubmit} noValidate className="space-y-5">
+      <LocalAccountNotice />
+
       {formError ? (
         <div
           role="alert"

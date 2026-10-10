@@ -21,29 +21,14 @@ import { ButtonLink } from '@/components/ui/Button'
  * the browser does.
  */
 export function AccountView() {
-  const { user, profile, loading, enabled } = useAuth()
+  const { user, profile, localAccount, signedIn, email, loading } = useAuth()
   const router = useRouter()
 
   useEffect(() => {
-    if (!loading && enabled && !user) router.replace('/signin?next=/account')
-  }, [loading, enabled, user, router])
+    if (!loading && !signedIn) router.replace('/signin?next=/account')
+  }, [loading, signedIn, router])
 
-  if (!enabled) {
-    return (
-      <>
-        <PageHeader
-          eyebrow="Account"
-          title="Accounts are not enabled"
-          description="This deployment has no account system configured. You can still request a quote without an account."
-        />
-        <Section>
-          <ButtonLink href="/quote">Request a quote</ButtonLink>
-        </Section>
-      </>
-    )
-  }
-
-  if (loading || !user) {
+  if (loading || !signedIn) {
     return (
       <div className="shell flex min-h-[50vh] items-center justify-center py-20">
         <p className="flex items-center gap-3 text-[14px] text-charcoal">
@@ -54,13 +39,25 @@ export function AccountView() {
     )
   }
 
+  // Whichever backend is in play, the same six rows are shown.
+  const p = user
+    ? {
+        firstName: profile?.first_name,
+        lastName: profile?.last_name,
+        phone: profile?.phone,
+        organization: profile?.organization,
+        customerType: profile?.customer_type,
+        city: profile?.city,
+      }
+    : localAccount?.profile
+
   const rows: Array<[string, string]> = [
-    ['Name', [profile?.first_name, profile?.last_name].filter(Boolean).join(' ') || '—'],
-    ['Business email', user.email ?? '—'],
-    ['Phone', profile?.phone || '—'],
-    ['Organization', profile?.organization || '—'],
-    ['Customer type', profile?.customer_type || '—'],
-    ['City', profile?.city || '—'],
+    ['Name', [p?.firstName, p?.lastName].filter(Boolean).join(' ') || '—'],
+    ['Business email', email ?? '—'],
+    ['Phone', p?.phone || '—'],
+    ['Organization', p?.organization || '—'],
+    ['Customer type', p?.customerType || '—'],
+    ['City', p?.city || '—'],
   ]
 
   return (
@@ -86,7 +83,7 @@ export function AccountView() {
                 </div>
               ))}
             </dl>
-            {!profile ? (
+            {user && !profile ? (
               <p className="mt-5 text-[13px] leading-6 text-charcoal">
                 We could not load a profile row for this account. If you have just
                 signed up, confirm your email address and log in again.

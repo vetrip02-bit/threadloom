@@ -11,12 +11,9 @@ import type { ContactFields } from '@/lib/profile-prefill'
 export function SignedInContact({
   contact,
   onEdit,
-  source = 'account',
 }: {
   contact: ContactFields
   onEdit: () => void
-  /** Where the details came from, so the copy never overstates it. */
-  source?: 'account' | 'device'
 }) {
   const rows: Array<[string, string]> = [
     ['Name', contact.firstName + ' ' + contact.lastName],
@@ -42,9 +39,7 @@ export function SignedInContact({
               Sending as {contact.firstName} {contact.lastName}
             </h3>
             <p className="mt-1 text-[12.5px] leading-5 text-charcoal">
-              {source === 'account'
-                ? 'Taken from your account — nothing to retype.'
-                : 'Taken from the details saved on this device — nothing to retype.'}
+              Taken from your account — nothing to retype.
             </p>
           </div>
         </div>

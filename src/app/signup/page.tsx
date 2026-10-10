@@ -1,10 +1,8 @@
 import type { Metadata } from 'next'
 import { Suspense } from 'react'
 
-import { ACCOUNTS_ENABLED } from '@/lib/supabase/env'
 import { AuthRoute } from '@/components/auth/AuthRoute'
 import { AuthPageSkeleton } from '@/components/auth/AuthPageShell'
-import { AccountsDisabled } from '@/components/auth/AccountsDisabled'
 
 export const metadata: Metadata = {
   title: 'Sign up',
@@ -15,7 +13,12 @@ export const metadata: Metadata = {
 }
 
 export default function SignUpPage() {
-  if (!ACCOUNTS_ENABLED) return <AccountsDisabled />
+  /*
+   * No Supabase gate here: sign-up and log-in work either way. With a
+   * Supabase project the account lives on their server; without one it is
+   * backed by this browser. AuthProvider picks the backend and the form
+   * discloses which is in play.
+   */
 
   return (
     <Suspense fallback={<AuthPageSkeleton />}>
