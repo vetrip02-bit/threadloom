@@ -40,13 +40,19 @@ export function HeaderAuth() {
       <div className="hidden items-center gap-1.5 md:flex">
         <Link
           href={'/signin' + next}
-          className="inline-flex h-10 items-center rounded-[6px] px-3 text-[13px] font-medium text-navy transition-colors hover:bg-ivory"
+          className="inline-flex h-10 items-center rounded-[6px] border border-transparent px-3 text-[13px] font-medium text-navy transition-colors duration-200 hover:bg-ivory"
         >
           Log in
         </Link>
+        {/*
+          Rests on the same hairline border as the Quote Bag beside it. A navy
+          border at rest sat heavier than anything else in the header and read
+          as a permanently pressed state. The hover/focus state is where the
+          emphasis belongs.
+        */}
         <Link
           href={'/signup' + next}
-          className="inline-flex h-10 items-center rounded-[6px] border border-navy px-4 text-[13px] font-medium text-navy transition-colors hover:bg-navy hover:text-white"
+          className="inline-flex h-10 items-center rounded-[6px] border border-hairline px-4 text-[13px] font-medium text-navy transition-colors duration-200 hover:border-navy hover:bg-navy hover:text-white"
         >
           Sign up
         </Link>
