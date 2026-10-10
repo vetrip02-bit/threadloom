@@ -4,6 +4,11 @@ import {
   ENQUIRY_DELIVERY_ENABLED,
   WEB3FORMS_ENDPOINT,
   WEB3FORMS_KEY,
+  ZOHO_WEBFORM_ACTION_TYPE,
+  ZOHO_WEBFORM_ENDPOINT,
+  ZOHO_WEBFORM_RETURN_URL,
+  ZOHO_WEBFORM_XMIWTLD,
+  ZOHO_WEBFORM_XNQSJSDP,
 } from './config'
 import { enquirySubject, enquiryText } from './render'
 import type { QuoteRequestInput } from '@/lib/validation/schemas'
@@ -58,25 +63,63 @@ export function buildPayload(
   }
 }
 
-/**
- * Sends the enquiry straight from the browser.
- *
- * Never resolves `ok: true` unless the provider confirmed receipt - an
- * enquiry the business will not receive must never look delivered.
- */
-export async function submitEnquiry(
+/** Maps a Threadloom enquiry onto the public Zoho CRM Web-to-Lead form. */
+export function buildZohoPayload(
   input: QuoteRequestInput,
-): Promise<SubmitOutcome> {
-  if (!ENQUIRY_DELIVERY_ENABLED) {
-    return {
-      ok: false,
-      code: 'not_configured',
-      message:
-        'Our enquiry form is not accepting messages right now. Please email or call us directly and we will pick it up straight away.',
-    }
-  }
+  reference: string,
+): URLSearchParams {
+  return new URLSearchParams({
+    xnQsjsdp: ZOHO_WEBFORM_XNQSJSDP,
+    zc_gad: '',
+    xmIwtLD: ZOHO_WEBFORM_XMIWTLD,
+    actionType: ZOHO_WEBFORM_ACTION_TYPE,
+    returnURL: ZOHO_WEBFORM_RETURN_URL,
+    Company: input.organization,
+    'First Name': input.firstName,
+    'Last Name': input.lastName,
+    Email: input.email,
+    Phone: input.phone,
+    'Address - City': input.city,
+    Description: enquiryText(input, reference),
+    'Lead Source': 'Online Store',
+    // Zoho's generated honeypot field. Legitimate submissions leave it blank.
+    aG9uZXlwb3Q: '',
+  })
+}
 
-  const reference = makeReference()
+/**
+ * Sends the enquiry to Zoho CRM without exposing an OAuth credential.
+ *
+ * Web-to-Lead is a public, write-only browser endpoint. `no-cors` is required
+ * because Zoho intentionally returns an opaque cross-origin response; a
+ * resolved fetch confirms that the browser dispatched the form successfully.
+ */
+async function submitToZoho(
+  input: QuoteRequestInput,
+  reference: string,
+): Promise<void> {
+  const controller = new AbortController()
+  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
+
+  try {
+    await fetch(ZOHO_WEBFORM_ENDPOINT, {
+      method: 'POST',
+      mode: 'no-cors',
+      keepalive: true,
+      signal: controller.signal,
+      body: buildZohoPayload(input, reference),
+    })
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+async function submitEmailCopy(
+  input: QuoteRequestInput,
+  reference: string,
+): Promise<void> {
+  if (!ENQUIRY_DELIVERY_ENABLED) return
+
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
 
@@ -90,17 +133,31 @@ export async function submitEnquiry(
 
     const payload = (await response.json().catch(() => ({}))) as {
       success?: boolean
-      message?: string
     }
-
     if (!response.ok || payload.success !== true) {
-      return {
-        ok: false,
-        code: 'failed',
-        message:
-          'We could not send your enquiry just now. Please email or call us directly — or try again in a few minutes.',
-      }
+      throw new Error('Email copy was not accepted')
     }
+  } finally {
+    clearTimeout(timer)
+  }
+}
+
+/**
+ * Sends the enquiry straight from the browser.
+ *
+ * Never resolves `ok: true` unless the provider confirmed receipt - an
+ * enquiry the business will not receive must never look delivered.
+ */
+export async function submitEnquiry(
+  input: QuoteRequestInput,
+): Promise<SubmitOutcome> {
+  const reference = makeReference()
+
+  try {
+    // Zoho is the system of record. The existing inbox delivery remains a
+    // best-effort secondary notification and cannot block CRM capture.
+    await submitToZoho(input, reference)
+    void submitEmailCopy(input, reference).catch(() => undefined)
 
     return { ok: true, reference }
   } catch {
@@ -110,7 +167,5 @@ export async function submitEnquiry(
       message:
         'We could not reach our enquiry service. Please email or call us directly — or try again in a few minutes.',
     }
-  } finally {
-    clearTimeout(timer)
   }
 }

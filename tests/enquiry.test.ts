@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest'
 
-import { buildPayload, makeReference } from '@/lib/enquiry/submit'
+import { buildPayload, buildZohoPayload, makeReference } from '@/lib/enquiry/submit'
 import {
   enquiryHtml,
   enquirySubject,
@@ -128,5 +128,32 @@ describe('buildPayload', () => {
 
   it('includes the provider honeypot field, left empty', () => {
     expect(payload.botcheck).toBe('')
+  })
+})
+
+describe('buildZohoPayload', () => {
+  const payload = buildZohoPayload(enquiry, 'QR-260415-ABCDE')
+
+  it('maps website contact details to the Zoho Lead field names', () => {
+    expect(payload.get('Company')).toBe('Lakeside Public School')
+    expect(payload.get('First Name')).toBe('Asha')
+    expect(payload.get('Last Name')).toBe('Menon')
+    expect(payload.get('Email')).toBe('asha.menon@example.com')
+    expect(payload.get('Phone')).toBe('+919876543210')
+    expect(payload.get('Address - City')).toBe('Kochi')
+  })
+
+  it('marks the record as an online-store lead and preserves quote details', () => {
+    expect(payload.get('Lead Source')).toBe('Online Store')
+    expect(payload.get('Description')).toContain('QR-260415-ABCDE')
+    expect(payload.get('Description')).toContain('Classic Uniform Shirt')
+    expect(payload.get('Description')).toContain('420 pcs')
+  })
+
+  it('includes Zoho form authentication fields and an empty honeypot', () => {
+    expect(payload.get('xnQsjsdp')).toBeTruthy()
+    expect(payload.get('xmIwtLD')).toBeTruthy()
+    expect(payload.get('actionType')).toBe('TGVhZHM=')
+    expect(payload.get('aG9uZXlwb3Q')).toBe('')
   })
 })

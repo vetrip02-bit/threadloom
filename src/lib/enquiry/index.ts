@@ -3,7 +3,7 @@ export {
   WEB3FORMS_ENDPOINT,
   WEB3FORMS_KEY,
 } from './config'
-export { buildPayload, makeReference, submitEnquiry } from './submit'
+export { buildPayload, buildZohoPayload, makeReference, submitEnquiry } from './submit'
 export type { SubmitOutcome } from './submit'
 export {
   enquiryHtml,
