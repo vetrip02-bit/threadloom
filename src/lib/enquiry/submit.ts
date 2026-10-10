@@ -90,27 +90,72 @@ export function buildZohoPayload(
 /**
  * Sends the enquiry to Zoho CRM without exposing an OAuth credential.
  *
- * Web-to-Lead is a public, write-only browser endpoint. `no-cors` is required
- * because Zoho intentionally returns an opaque cross-origin response; a
- * resolved fetch confirms that the browser dispatched the form successfully.
+ * Zoho's Web-to-Lead endpoint is designed for a normal HTML form navigation.
+ * A `no-cors` fetch only returns an opaque response and can look successful
+ * even when Zoho rejects the request. Posting a temporary form to a hidden
+ * iframe preserves Zoho's supported browser flow. We only resolve after Zoho
+ * redirects that iframe back to the configured same-origin return URL.
  */
 async function submitToZoho(
   input: QuoteRequestInput,
   reference: string,
 ): Promise<void> {
-  const controller = new AbortController()
-  const timer = setTimeout(() => controller.abort(), TIMEOUT_MS)
+  const frame = document.createElement('iframe')
+  const frameName = `threadloom-zoho-${Date.now()}-${Math.random().toString(36).slice(2)}`
+  frame.name = frameName
+  frame.title = 'Zoho CRM enquiry delivery'
+  frame.hidden = true
+  frame.src = 'about:blank'
+
+  const form = document.createElement('form')
+  form.method = 'POST'
+  form.action = ZOHO_WEBFORM_ENDPOINT
+  form.target = frameName
+  form.acceptCharset = 'UTF-8'
+  form.hidden = true
+
+  for (const [name, value] of buildZohoPayload(input, reference)) {
+    const field = document.createElement('input')
+    field.type = 'hidden'
+    field.name = name
+    field.value = value
+    form.appendChild(field)
+  }
+
+  document.body.append(frame, form)
 
   try {
-    await fetch(ZOHO_WEBFORM_ENDPOINT, {
-      method: 'POST',
-      mode: 'no-cors',
-      keepalive: true,
-      signal: controller.signal,
-      body: buildZohoPayload(input, reference),
+    await new Promise<void>((resolve, reject) => {
+      let submitted = false
+      const timer = window.setTimeout(
+        () => reject(new Error('Zoho CRM did not confirm the enquiry in time')),
+        TIMEOUT_MS,
+      )
+
+      const finish = () => {
+        window.clearTimeout(timer)
+        resolve()
+      }
+
+      frame.addEventListener('load', () => {
+        if (!submitted) return
+
+        // The first load can be Zoho's cross-origin processing page. The
+        // successful second load is the configured Threadloom return URL.
+        try {
+          const href = frame.contentWindow?.location.href ?? ''
+          if (href.startsWith(ZOHO_WEBFORM_RETURN_URL)) finish()
+        } catch {
+          // Still on Zoho's origin; wait for its redirect to Threadloom.
+        }
+      })
+
+      submitted = true
+      form.submit()
     })
   } finally {
-    clearTimeout(timer)
+    form.remove()
+    frame.remove()
   }
 }
 

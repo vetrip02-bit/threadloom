@@ -27,9 +27,9 @@ export const ENQUIRY_DELIVERY_ENABLED = WEB3FORMS_KEY.length > 0
  */
 export const ZOHO_WEBFORM_ENDPOINT = 'https://crm.zoho.in/crm/WebToLeadForm'
 export const ZOHO_WEBFORM_XNQSJSDP =
-  'c4c259254a734cb55608e20bd81632c1fd2ae8fbce9af39b0b21049fcbdc98c6'
+  '5ea82dff15938db2b2dcc9bffb50318b8553b860fb58d973271dfd418fc30c53'
 export const ZOHO_WEBFORM_XMIWTLD =
-  '656db9bf49f4056401ac85da08706c93e7dd01f13ce155e0b2998210f18a8deb321670bde391ae12fda9dcfc1f0bdb4c'
+  'c752ed64046dd174d5422af0e2e3a08e6510b5e35b6c4575b36b77bcb84e82df13c58c3decb7fa80e8275a85be28d8e7'
 export const ZOHO_WEBFORM_ACTION_TYPE = 'TGVhZHM='
 export const ZOHO_WEBFORM_RETURN_URL =
   'https://vetrip02-bit.github.io/threadloom/quote/'
