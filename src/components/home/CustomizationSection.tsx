@@ -4,6 +4,7 @@ import { ArrowRight } from 'lucide-react'
 import { CUSTOMIZATION_OPTIONS } from '@/data/catalog'
 import { Section, SectionHeading } from '@/components/ui/Section'
 import { ButtonLink } from '@/components/ui/Button'
+import { assetPath } from '@/lib/asset'
 
 export function CustomizationSection() {
   return (
@@ -34,7 +35,7 @@ export function CustomizationSection() {
         <div className="flex flex-col">
           <div className="relative aspect-[4/5] overflow-hidden rounded-image bg-ivory">
             <Image
-              src="/images/custom-tshirts.png"
+              src={assetPath("/images/custom-tshirts.png")}
               alt="Three people wearing plain white, burgundy and navy round-neck T-shirts ready for custom branding."
               fill
               loading="lazy"

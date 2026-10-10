@@ -11,6 +11,7 @@ import { Section, SectionHeading } from '@/components/ui/Section'
 import { ButtonLink } from '@/components/ui/Button'
 import { QuoteCta } from '@/components/home/QuoteCta'
 import type { CategorySlug } from '@/types'
+import { assetPath } from '@/lib/asset'
 
 export function generateStaticParams() {
   return CATEGORIES.map((category) => ({ slug: category.slug }))
@@ -95,7 +96,7 @@ export default async function CategoryPage({
 
             <div className="relative aspect-[4/5] overflow-hidden rounded-image bg-ivory sm:aspect-[4/3] lg:aspect-[4/5]">
               <Image
-                src={category.image}
+                src={assetPath(category.image)}
                 alt={category.imageAlt}
                 fill
                 priority

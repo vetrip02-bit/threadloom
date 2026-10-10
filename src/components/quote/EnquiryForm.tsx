@@ -18,6 +18,8 @@ import { useAuth } from '@/components/auth/AuthProvider'
 import { SignedInContact } from '@/components/quote/SignedInContact'
 import { isContactComplete, prefillFromProfile } from '@/lib/profile-prefill'
 import { todayIso } from '@/lib/utils'
+import { submitEnquiry } from '@/lib/enquiry'
+import { quoteRequestSchema, fieldErrors } from '@/lib/validation/schemas'
 
 type Status = 'idle' | 'submitting' | 'success' | 'error'
 
@@ -118,42 +120,34 @@ export function EnquiryForm({
     setFormError('')
     setErrors({})
 
-    try {
-      const response = await fetch('/api/quote', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          ...values,
-          source,
-          items: [],
-          company_website: honeypot,
-        }),
-      })
+    const parsed = quoteRequestSchema.safeParse({
+      ...values,
+      source,
+      items: [],
+      company_website: honeypot,
+    })
 
-      const payload = (await response.json().catch(() => ({}))) as {
-        ok?: boolean
-        reference?: string
-        errors?: Record<string, string>
-        message?: string
-      }
-
-      if (!response.ok || !payload.ok) {
-        if (payload.errors) setErrors(payload.errors)
-        setFormError(
-          payload.message ??
-            'We could not send your enquiry. Please try again, or email us directly.',
-        )
-        setStatus('error')
-        return
-      }
-
-      setReference(payload.reference ?? '')
-      setStatus('success')
-      setValues(INITIAL)
-    } catch {
-      setFormError('We could not reach the server. Check your connection and try again.')
-      setStatus('error')
+    if (!parsed.success) {
+      setErrors(fieldErrors(parsed.error))
+      setStatus('idle')
+      return
     }
+
+    if (parsed.data.company_website) {
+      setStatus('success')
+      return
+    }
+
+    const outcome = await submitEnquiry(parsed.data)
+    if (!outcome.ok) {
+      setFormError(outcome.message)
+      setStatus('error')
+      return
+    }
+
+    setReference(outcome.reference)
+    setStatus('success')
+    setValues(INITIAL)
   }
 
   if (status === 'success') {

@@ -5,6 +5,7 @@ import { ArrowUpRight } from 'lucide-react'
 import { CATEGORIES } from '@/data/catalog'
 import { Section, SectionHeading } from '@/components/ui/Section'
 import type { Category } from '@/types'
+import { assetPath } from '@/lib/asset'
 
 function CategoryCard({ category, wide }: { category: Category; wide?: boolean }) {
   return (
@@ -19,7 +20,7 @@ function CategoryCard({ category, wide }: { category: Category; wide?: boolean }
         }
       >
         <Image
-          src={category.image}
+          src={assetPath(category.image)}
           alt={category.imageAlt}
           fill
           loading="lazy"

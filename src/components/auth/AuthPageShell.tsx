@@ -1,14 +1,6 @@
-import { notFound } from 'next/navigation'
-
-import { ACCOUNTS_ENABLED } from '@/lib/supabase/env'
 import { Breadcrumbs } from '@/components/catalog/Breadcrumbs'
 
-/**
- * Shared shell for /signin and /signup.
- *
- * When this deployment has no Supabase project, the auth pages 404 rather than
- * rendering a form that cannot possibly work.
- */
+/** Presentational shell shared by /signin and /signup. */
 export function AuthPageShell({
   href,
   label,
@@ -24,8 +16,6 @@ export function AuthPageShell({
   description: string
   children: React.ReactNode
 }) {
-  if (!ACCOUNTS_ENABLED) notFound()
-
   return (
     <>
       <Breadcrumbs trail={[{ href: '/', label: 'Home' }, { href, label }]} />
@@ -44,5 +34,18 @@ export function AuthPageShell({
         </div>
       </div>
     </>
+  )
+}
+
+/** Shown while the client reads `?next=` from the URL. */
+export function AuthPageSkeleton() {
+  return (
+    <div className="shell py-12 md:py-16">
+      <div className="mx-auto max-w-[560px]">
+        <div className="h-3 w-24 animate-pulse rounded bg-ivory" />
+        <div className="mt-4 h-9 w-3/4 animate-pulse rounded bg-ivory" />
+        <div className="mt-9 h-[420px] animate-pulse rounded-card bg-ivory" />
+      </div>
+    </div>
   )
 }

@@ -1,8 +1,10 @@
 import type { Metadata } from 'next'
+import { Suspense } from 'react'
+import { notFound } from 'next/navigation'
 
-import { SignInForm } from '@/components/auth/SignInForm'
-import { AuthPageShell } from '@/components/auth/AuthPageShell'
-import { safeRedirect } from '@/lib/safe-redirect'
+import { ACCOUNTS_ENABLED } from '@/lib/supabase/env'
+import { AuthRoute } from '@/components/auth/AuthRoute'
+import { AuthPageSkeleton } from '@/components/auth/AuthPageShell'
 
 export const metadata: Metadata = {
   title: 'Log in',
@@ -11,23 +13,14 @@ export const metadata: Metadata = {
   robots: { index: false, follow: true },
 }
 
-export default async function SignInPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ next?: string }>
-}) {
-  const { next } = await searchParams
-  const returnTo = safeRedirect(next, '/')
+export default function SignInPage() {
+  // Built without a Supabase project: the route does not exist at all, rather
+  // than rendering a form that cannot work.
+  if (!ACCOUNTS_ENABLED) notFound()
 
   return (
-    <AuthPageShell
-      href="/signin"
-      label="Log in"
-      eyebrow="Welcome back"
-      title="Log in to your account"
-      description="Your details are filled in for you on every quote, so you never type them twice."
-    >
-      <SignInForm returnTo={returnTo} />
-    </AuthPageShell>
+    <Suspense fallback={<AuthPageSkeleton />}>
+      <AuthRoute mode="signin" />
+    </Suspense>
   )
 }

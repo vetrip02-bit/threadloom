@@ -9,6 +9,7 @@ import { Breadcrumbs } from '@/components/catalog/Breadcrumbs'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Section, SectionHeading } from '@/components/ui/Section'
 import { QuoteCta } from '@/components/home/QuoteCta'
+import { assetPath } from '@/lib/asset'
 
 export const metadata: Metadata = {
   title: 'Uniforms',
@@ -37,7 +38,7 @@ export default function UniformsPage() {
               >
                 <div className="relative aspect-[4/5] overflow-hidden bg-ivory">
                   <Image
-                    src={category.image}
+                    src={assetPath(category.image)}
                     alt={category.imageAlt}
                     fill
                     loading="lazy"

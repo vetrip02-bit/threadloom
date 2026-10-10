@@ -1,24 +1,32 @@
+/**
+ * Static export for GitHub Pages.
+ *
+ * Pages serves files only, so there is no server runtime: no API routes, no
+ * middleware, no server-rendered pages. Enquiries are posted straight from the
+ * browser (src/lib/enquiry) and Supabase Auth runs client-side.
+ *
+ * To move back to a Node host (Vercel, a VPS, Docker) remove `output`,
+ * `basePath`, `assetPrefix` and `images.unoptimized`, and restore the
+ * `headers()` block below — security headers cannot be set by Pages.
+ */
+
+// A project site is served from https://<user>.github.io/<repo>, so every
+// asset and link needs that prefix. Overridable for other hosts.
+const basePath = process.env.NEXT_PUBLIC_BASE_PATH ?? ''
+
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  output: 'export',
   reactStrictMode: true,
+  basePath,
+  assetPrefix: basePath || undefined,
+  // Pages has no image optimizer; images are served as-is from /public.
   images: {
-    formats: ['image/avif', 'image/webp'],
-    deviceSizes: [360, 480, 640, 768, 1024, 1280, 1536, 1920],
-    imageSizes: [96, 160, 240, 320, 420, 560],
+    unoptimized: true,
   },
+  // Emits every route as <route>/index.html, which is what Pages expects.
+  trailingSlash: true,
   poweredByHeader: false,
-  async headers() {
-    return [
-      {
-        source: '/:path*',
-        headers: [
-          { key: 'X-Content-Type-Options', value: 'nosniff' },
-          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
-          { key: 'X-Frame-Options', value: 'SAMEORIGIN' },
-        ],
-      },
-    ]
-  },
 }
 
 export default nextConfig

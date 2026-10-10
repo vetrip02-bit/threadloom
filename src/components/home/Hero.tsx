@@ -2,6 +2,7 @@ import Image from 'next/image'
 import { ArrowRight } from 'lucide-react'
 
 import { ButtonLink } from '@/components/ui/Button'
+import { assetPath } from '@/lib/asset'
 
 /**
  * Homepage hero.
@@ -48,7 +49,7 @@ export function Hero() {
           <div className="relative">
             <div className="relative aspect-[16/9] overflow-hidden rounded-image bg-ivory lg:aspect-[16/10]">
               <Image
-                src="/images/hero-uniforms.png"
+                src={assetPath("/images/hero-uniforms.png")}
                 alt="A team in professional uniforms: a corporate suit, a student blazer, a hospitality tunic, a chef coat and sportswear."
                 fill
                 priority

@@ -1,8 +1,10 @@
 import type { Metadata } from 'next'
+import { Suspense } from 'react'
+import { notFound } from 'next/navigation'
 
-import { SignUpForm } from '@/components/auth/SignUpForm'
-import { AuthPageShell } from '@/components/auth/AuthPageShell'
-import { safeRedirect } from '@/lib/safe-redirect'
+import { ACCOUNTS_ENABLED } from '@/lib/supabase/env'
+import { AuthRoute } from '@/components/auth/AuthRoute'
+import { AuthPageSkeleton } from '@/components/auth/AuthPageShell'
 
 export const metadata: Metadata = {
   title: 'Sign up',
@@ -12,23 +14,12 @@ export const metadata: Metadata = {
   robots: { index: false, follow: true },
 }
 
-export default async function SignUpPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ next?: string }>
-}) {
-  const { next } = await searchParams
-  const returnTo = safeRedirect(next, '/')
+export default function SignUpPage() {
+  if (!ACCOUNTS_ENABLED) notFound()
 
   return (
-    <AuthPageShell
-      href="/signup"
-      label="Sign up"
-      eyebrow="Create account"
-      title="Set up your trade account"
-      description="Tell us who you are once. After this, requesting a quote takes a few seconds — your contact details are filled in for you."
-    >
-      <SignUpForm returnTo={returnTo} />
-    </AuthPageShell>
+    <Suspense fallback={<AuthPageSkeleton />}>
+      <AuthRoute mode="signup" />
+    </Suspense>
   )
 }

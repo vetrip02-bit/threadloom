@@ -9,9 +9,9 @@ anywhere in the application.
 - **Styling:** Tailwind CSS 3, Poppins via `next/font/google`
 - **Icons:** lucide-react
 - **Validation:** Zod (server-side on every endpoint, and client-side for fast feedback)
-- **Enquiry delivery:** Resend REST API, server-side only — **required**
+- **Hosting:** GitHub Pages — fully static export, no server runtime
+- **Enquiry delivery:** Web3Forms, posted straight from the browser — **required**
 - **Accounts:** Supabase Auth with an RLS-protected `profiles` table — *optional*
-- **CRM:** Zoho CRM REST API v8 over OAuth 2.0, server-side only — *optional*
 
 ---
 
@@ -21,14 +21,12 @@ anywhere in the application.
 2. [Image assets](#2-image-assets)
 3. [Environment variables](#3-environment-variables)
 4. [Enquiry delivery setup (required)](#4-enquiry-delivery-setup-required)
-5. [Zoho CRM setup (optional)](#5-zoho-crm-setup-optional)
-6. [Finding Zoho Field API Names](#6-finding-zoho-field-api-names)
-7. [Testing delivery safely](#7-testing-delivery-safely)
-8. [Scripts](#8-scripts)
-9. [Deployment](#9-deployment)
-10. [Security notes](#10-security-notes)
-11. [Project structure](#11-project-structure)
-12. [What the business owner must replace](#12-what-the-business-owner-must-replace)
+5. [Customer accounts (optional)](#5-customer-accounts-optional)
+6. [Deploying to GitHub Pages](#6-deploying-to-github-pages)
+7. [Scripts](#7-scripts)
+8. [Security notes](#8-security-notes)
+9. [Project structure](#9-project-structure)
+10. [What the business owner must replace](#10-what-the-business-owner-must-replace)
 
 ---
 
@@ -145,256 +143,133 @@ Zoho is regional. Use the pair matching where your CRM account lives.
 
 ## 4. Enquiry delivery setup (required)
 
-Without this, the quote form cannot deliver anything and deliberately refuses
-to accept enquiries. Two values are needed.
+This site is a **static export** served by GitHub Pages. There is no server, so
+there is nowhere to keep a secret API key. Enquiries are posted from the
+visitor's browser to [Web3Forms](https://web3forms.com), which exists for
+exactly this case.
 
-1. Create a free account at [resend.com](https://resend.com).
-2. **API Keys → Create API Key**. Copy the `re_...` value into
-   `RESEND_API_KEY` in `.env.local`.
-3. Set `ENQUIRY_TO_EMAIL` to the inbox that should receive enquiries.
+1. Go to [web3forms.com](https://web3forms.com), enter the inbox that should
+   receive enquiries, and they email you an **access key**. No account, no
+   password.
+2. Add it as a repository variable (below) or to `.env.local` as
+   `NEXT_PUBLIC_WEB3FORMS_KEY`.
 
-```bash
-RESEND_API_KEY=re_xxxxxxxxxxxx
-ENQUIRY_TO_EMAIL=sales@yourdomain.com
-```
+### Why that key is public, and why that is fine
 
-### About the sender address
+It ships in the JavaScript bundle. That is by design: the key only names the
+destination inbox, it cannot read submissions or your account, and Web3Forms
+applies its own spam filtering. The worst a copied key allows is unsolicited
+mail to you — which the honeypot field and Web3Forms' filtering already blunt.
+It is not a credential in the sense that a Resend or Zoho key is.
 
-`ENQUIRY_FROM_EMAIL` defaults to Resend's shared sandbox sender,
-`onboarding@resend.dev`. **The sandbox sender can only deliver to the email
-address that owns the Resend account.** That is fine for testing, but for
-production:
-
-1. **Domains → Add Domain** in Resend, and add the DNS records it gives you.
-2. Set `ENQUIRY_FROM_EMAIL=enquiries@yourdomain.com`.
-
-### What arrives
-
-One email per enquiry, plain text and HTML, with the reference number and
-organization in the subject line. **Reply-to is set to the customer's own
-address**, so hitting reply in your inbox answers them directly.
+**Without the key the quote form refuses enquiries** — HTTP never happens, the
+customer sees your email and phone instead. It never pretends to have sent
+something.
 
 ### Contact details
 
-Set these so the site stops showing placeholders — and so the "email or call us
-directly" fallback gives customers something real when delivery fails:
+Set these so the site stops showing `[bracketed]` placeholders, and so the
+delivery fallback gives customers something real:
 
-```bash
-NEXT_PUBLIC_CONTACT_EMAIL=sales@yourdomain.com
-NEXT_PUBLIC_CONTACT_PHONE=+91XXXXXXXXXX
-NEXT_PUBLIC_CONTACT_ADDRESS=Unit 4|MG Road|Kochi - 682016|India
-NEXT_PUBLIC_CONTACT_HOURS=Mon-Sat, 10:00-18:00 IST
-NEXT_PUBLIC_GSTIN=32XXXXXXXXXXXZX
+```
+NEXT_PUBLIC_CONTACT_EMAIL, NEXT_PUBLIC_CONTACT_PHONE,
+NEXT_PUBLIC_CONTACT_ADDRESS (pipe-separated lines),
+NEXT_PUBLIC_CONTACT_HOURS, NEXT_PUBLIC_GSTIN
 ```
 
-## 4b. Customer accounts (optional)
+---
 
-Leave `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY` unset and
-the whole account system disappears — **the buttons are not rendered at all**,
-rather than leading to a form that cannot work. Guest quoting still works.
+## 5. Customer accounts (optional)
 
-To enable accounts:
+Leave the two Supabase variables unset and the account system **disappears
+entirely** — no Log in / Sign up buttons, and `/signin` and `/signup` are not
+even built. Guest quoting is unaffected.
+
+To enable it:
 
 1. Create a free project at [supabase.com](https://supabase.com).
-2. **Project Settings → API** — copy the **Project URL** and the **anon public**
-   key into `NEXT_PUBLIC_SUPABASE_URL` and `NEXT_PUBLIC_SUPABASE_ANON_KEY`.
+2. **Project Settings → API** — copy the Project URL and the anon public key.
 3. **SQL Editor → New query** — paste all of
    [`supabase/schema.sql`](supabase/schema.sql) and run it. It creates the
    `profiles` table, Row Level Security policies restricting every row to its
-   owner, and a trigger that seeds the profile from the sign-up form in the
-   same transaction as the user row.
-4. **Authentication → URL Configuration** — set the Site URL to your real
-   origin and add `http://localhost:3000` as an additional redirect URL.
-5. **Authentication → Providers → Email** — decide on confirmation:
-   - **Confirm email OFF** → signing up logs the customer straight in and
-     returns them to the page they came from. Smoothest flow.
-   - **Confirm email ON** (default) → they see a "check your inbox" screen and
-     land back on the right page after clicking the link. More secure.
+   owner, and a trigger seeding the profile from the sign-up form.
+4. **Authentication → URL Configuration** — set the Site URL to your Pages URL
+   and add `http://localhost:3000` for local development.
+5. **Authentication → Providers → Email** — turning **Confirm email off** makes
+   sign-up log the customer straight in and return them to the page they came
+   from. Both paths are implemented.
 
-   Both paths are implemented; pick whichever suits you.
+### Security on a static host
 
-### How the return-to-page flow works
+There is no middleware and no server session, so the `/account` guard runs in
+the browser. **The data behind it is still protected**: Supabase Row Level
+Security means a profile row can only ever be read by its owner, whatever the
+browser does. The client-side guard is a navigation convenience, not the
+security boundary.
+
+---
+
+## 6. Deploying to GitHub Pages
+
+Already wired up. `.github/workflows/deploy.yml` runs on every push to `main`:
+lint → typecheck → test → build → publish. **A failing gate blocks the
+deploy**, so a broken build cannot reach the live site.
+
+One-time setup:
+
+1. **Settings → Pages → Build and deployment → Source** → **GitHub Actions**.
+2. **Settings → Secrets and variables → Actions → Variables** → add the
+   `NEXT_PUBLIC_*` values you want baked into the build. They are *variables*,
+   not secrets, because every one of them ends up in the client bundle anyway —
+   storing them as secrets would imply a confidentiality the build cannot
+   provide.
+
+| Variable | Effect if unset |
+| --- | --- |
+| `NEXT_PUBLIC_WEB3FORMS_KEY` | Quote form refuses enquiries |
+| `NEXT_PUBLIC_SUPABASE_URL` / `_ANON_KEY` | Account system hidden |
+| `NEXT_PUBLIC_CONTACT_*` | `[placeholders]` shown |
+| `NEXT_PUBLIC_ALLOW_INDEXING` | Whole site serves `noindex` |
+
+`NEXT_PUBLIC_BASE_PATH` and `NEXT_PUBLIC_SITE_URL` are set automatically from
+the Pages configuration — don't set them by hand.
+
+### What a static host costs you
+
+| Gone | Why, and what replaced it |
+| --- | --- |
+| `/api/quote` | No server. The browser posts to Web3Forms instead. |
+| `middleware.ts` | No server. `/account` guards client-side; RLS still protects the data. |
+| Zoho CRM sync | Needs a server to hold OAuth secrets. Removed — recoverable from git history if you move to a Node host. |
+| Security headers | Pages cannot set them. `next.config.mjs` documents how to restore the `headers()` block. |
+| Server-side rate limiting | Web3Forms applies its own; the honeypot is still in place. |
+
+### Moving back to a Node host later
+
+Remove `output`, `basePath`, `assetPrefix` and `images.unoptimized` from
+`next.config.mjs`, restore the `headers()` block, and deploy to Vercel or any
+Node host. Everything else works unchanged.
+
+### The `?next=` redirect
 
 Each header button carries the current path, e.g.
-`/signup?next=%2Funiforms%2Fcustom-tshirts`. After signing up or logging in the
-customer goes straight back there.
-
-That `next` value is passed through `safeRedirect()`
-(`src/lib/safe-redirect.ts`) on the server, which rejects absolute URLs,
-protocol-relative URLs, backslash and scheme tricks, and auth pages themselves.
-Without it, `?next=https://evil.example` would turn your login page into an
-open redirect for phishing. There are tests for each case.
+`/signup?next=%2Funiforms%2Fcustom-tshirts`, so the customer returns to where
+they were. That value runs through `safeRedirect()`
+(`src/lib/safe-redirect.ts`), which rejects absolute URLs, protocol-relative
+URLs, backslash and scheme tricks, and auth pages. Without it,
+`?next=https://evil.example` would make your login page an open redirect.
+On a static host this check runs client-side, on exactly the value that will be
+used. Seven tests cover it.
 
 ### Passwords
 
 Handled entirely by Supabase Auth and stored hashed by them. This application
 never reads, stores, logs or forwards a password, and never includes one in a
-validation error — there is a test asserting the last point.
-
-## 5. Zoho CRM setup (optional)
-
-**Skip this entirely if you do not use Zoho CRM.** Enquiries already reach your
-inbox by email; Zoho just files a second copy as a CRM record. A CRM outage
-never affects the customer — the email has already been sent by that point.
-
-### Create a server-based OAuth client
-
-1. Go to the [Zoho API Console](https://api-console.zoho.com/) **for your data
-   centre** (`api-console.zoho.in` for India, and so on).
-2. **Add Client → Self Client** (simplest for a server-to-server integration).
-3. Note the **Client ID** and **Client Secret**.
-
-### Generate a refresh token
-
-1. In the Self Client, open the **Generate Code** tab.
-2. Scope:
-
-   ```text
-   ZohoCRM.modules.ALL,ZohoCRM.settings.fields.READ
-   ```
-
-   `settings.fields.READ` is not required at runtime, but it lets you list
-   Field API Names through the API (see the next section).
-3. Set a duration (10 minutes is plenty), enter any description, and generate.
-   Copy the **grant code** — it expires quickly.
-4. Exchange it for a refresh token. Replace the host with your data centre:
-
-   ```bash
-   curl -X POST https://accounts.zoho.in/oauth/v2/token \
-     -d "grant_type=authorization_code" \
-     -d "client_id=YOUR_CLIENT_ID" \
-     -d "client_secret=YOUR_CLIENT_SECRET" \
-     -d "code=THE_GRANT_CODE"
-   ```
-
-5. Copy `refresh_token` from the response into `ZOHO_REFRESH_TOKEN`.
-   **The refresh token does not expire** unless revoked — treat it exactly like
-   a password.
-
-### How the integration behaves
-
-| Function | Lives in | Behaviour |
-| --- | --- | --- |
-| `refreshAccessToken` | `src/lib/zoho/client.ts` | Exchanges the refresh token for an access token, caches it in memory until 60s before expiry, and prefers the `api_domain` Zoho returns. |
-| `upsertContact` | `src/lib/zoho/client.ts` | Upserts into `ZOHO_CRM_MODULE` with `Email` as the duplicate key, so repeat sign-ins update one record instead of creating duplicates. Retries once on a 401 with a forced token refresh. |
-| `createQuoteEnquiry` | `src/lib/zoho/client.ts` | Creates a record in `ZOHO_QUOTE_MODULE`. Enquiries are deliberately **not** de-duplicated — each is a distinct event. |
-
-All three take an explicit config argument with an env-backed default, so they
-are unit-testable with no network and no secrets.
-
-### Default field mapping
-
-Edit `src/lib/zoho/mapping.ts`. The keys on the left are internal; **the values
-on the right are Zoho Field API Names and are the only thing you should change.**
-
-Enquiries default to the stock **Leads** layout, with the full enquiry
-(including a structured item summary) written to `Description`:
-
-| Internal | Zoho API Name |
-| --- | --- |
-| `firstName` | `First_Name` |
-| `lastName` | `Last_Name` *(required by Zoho)* |
-| `company` | `Company` *(required on stock Leads)* |
-| `email` | `Email` |
-| `phone` | `Phone` |
-| `city` | `City` |
-| `description` | `Description` |
-| `leadSource` | `Lead_Source` → `"Website Quote Request"` |
-
-> `Lead_Source` is standard, but `"Website Quote Request"` is **not** a stock
-> picklist value. Add it under *Setup → Customization → Modules and Fields →
-> Leads → Lead Source*, or set `leadSource` to `null`. Writing an unknown
-> picklist value makes Zoho reject the whole record.
-
-**Optional custom fields — all `null` until you create them in Zoho:**
-
-| Internal | Suggested field type | Suggested API Name |
-| --- | --- | --- |
-| `estimatedQuantity` | Number | `Estimated_Quantity` |
-| `expectedDate` | Date | `Expected_Delivery_Date` |
-| `requirements` | Multi Line | `Requirements` |
-| `itemsSummary` | Multi Line | `Quote_Items` |
-| `consentTimestamp` | Date/Time | `Consent_Timestamp` |
-
-Quote items are sent as a concise text block, one numbered line per item, until
-you configure a dedicated CRM subform. Swap `formatQuoteItems` for a subform
-payload when you do.
-
-**Unmapped values are omitted, not blanked.** Empty strings and nulls are
-dropped from the payload so a sync can never wipe data a colleague typed into
-the CRM by hand.
+validation error — there is a test for that.
 
 ---
 
-## 6. Finding Zoho Field API Names
-
-Zoho is case-sensitive and **silently ignores unknown keys** — a wrong name
-looks like "the sync succeeded but the field is empty". Three ways to get it
-right:
-
-**A. Through the UI**
-*Setup → Customization → Modules and Fields → `<module>` → edit the field.*
-The **API Name** is shown in the field properties panel.
-
-**B. The API-names screen**
-*Setup → Developer Space → APIs → API Names* lists every module and field.
-
-**C. Through the API** (needs `ZohoCRM.settings.fields.READ`):
-
-```bash
-curl -s "https://www.zohoapis.in/crm/v8/settings/fields?module=Leads" \
-  -H "Authorization: Zoho-oauthtoken YOUR_ACCESS_TOKEN" \
-  | python3 -c "import json,sys; [print(f\"{f['api_name']:<34} {f['field_label']}\") for f in json.load(sys.stdin)['fields']]"
-```
-
-Custom fields you create carry a suffix, e.g. `Customer_Type` may actually be
-`Customer_Type1` if the label collided. **Copy the API Name exactly.**
-
-Also confirm the field is on the **layout** assigned to the integration user —
-a field that exists but is not on the layout will be rejected.
-
----
-
-## 7. Testing delivery safely
-
-**Test enquiry delivery first — it is the one thing that must never fail
-silently.**
-
-```bash
-npm run dev
-```
-
-Verify all three delivery states:
-
-1. **Unconfigured.** With `RESEND_API_KEY` unset, submit the quote form. You
-   must get an on-page "Your enquiry was not sent" panel with your email and
-   phone as clickable links, and:
-
-   ```bash
-   curl -s -X POST http://localhost:3000/api/quote \
-     -H 'Content-Type: application/json' -d '{ ...valid enquiry... }'
-   # -> HTTP 503 {"ok":false,"code":"delivery_unavailable",...}
-   ```
-
-2. **Broken key.** Set `RESEND_API_KEY=re_invalid` and resubmit — expect
-   **HTTP 502** `delivery_failed`, the same fallback panel, and a server log
-   line with the key redacted. **Never a success screen.**
-
-3. **Working.** Set the real key and submit. The email must land in
-   `ENQUIRY_TO_EMAIL` within seconds, with the reference in the subject and
-   reply-to set to the customer's address. Hit reply and confirm it addresses
-   the customer, not yourself.
-
-### Zoho (only if configured)
-
-Use a [free Zoho developer edition](https://www.zoho.com/crm/developer/) or a
-sandbox before touching production CRM data, and generate separate credentials
-for it. Set `ZOHO_DEBUG=1`, submit an enquiry, and confirm a Lead appears with
-the enquiry in `Description`. Then break the refresh token deliberately and
-confirm the enquiry **still succeeds** — the email has already been sent, so a
-CRM failure is logged and swallowed.
-
-## 8. Scripts
+## 7. Scripts
 
 | Command | Does |
 | --- | --- |
@@ -413,63 +288,7 @@ builders. All network calls and secrets are mocked.
 
 ---
 
-## 9. Deployment
-
-Works on any Node host. The middleware runs on the **Node.js runtime**
-(`src/middleware.ts`) — the Edge runtime is deprecated and is rejected outright
-by anonymous Vercel deployments.
-
-### Permanent deployment (Vercel)
-
-```bash
-npx vercel login      # one-time, opens your browser
-npx vercel --prod
-```
-
-Then, in the Vercel dashboard:
-
-1. **Settings → Environment Variables** — add every variable from
-   `.env.example`. **`RESEND_API_KEY` and `ENQUIRY_TO_EMAIL` are mandatory**;
-   without them the deployed quote form refuses every enquiry. Double-check
-   none of the server-only values start with `NEXT_PUBLIC_`.
-2. Set **`NEXT_PUBLIC_SITE_URL`** to the production origin. The sitemap,
-   canonical tags and Open Graph URLs are derived from it.
-   *(Without it the app falls back to Vercel's injected `VERCEL_URL`, and
-   finally to `http://localhost:3000`.)*
-3. Set **`NEXT_PUBLIC_ALLOW_INDEXING=true`** only once the placeholder content
-   is replaced — see §12. Until then the whole site serves `noindex`.
-4. Submit a real enquiry against the deployed site and confirm it lands in
-   your inbox. Do not consider the deploy finished until it does.
-
-### Temporary / anonymous deployment
-
-```bash
-npx vercel deploy --temporary --prod
-```
-
-Produces a public URL with no login, and prints a claim link to keep it.
-**It expires about an hour after creation unless claimed.**
-
-Two caveats specific to anonymous deployments:
-
-- Vercel injects no project environment variables into the build, and `-b` /
-  `--build-env` is ignored. `NEXT_PUBLIC_SITE_URL` therefore cannot be set, so
-  canonical tags and the sitemap fall back to `http://localhost:3000`. This is
-  cosmetic while the site is `noindex`, and resolves itself on a claimed or
-  logged-in deployment.
-- No environment variables means no `RESEND_API_KEY`, so **the quote form
-  refuses every enquiry** with the "email or call us directly" fallback. An
-  anonymous deployment is a visual preview only, never a working lead-capture
-  site.
-
-> **Rate limiting is per-instance.** `src/lib/rate-limit.ts` holds counters in
-> process memory, which protects a single server but not a fleet of serverless
-> functions. For production traffic, swap its `hits` map for a shared store
-> (Upstash Redis, Vercel KV or a Supabase table). Only that one file changes.
-
----
-
-## 10. Security notes
+## 8. Security notes
 
 - **Provider credentials are server-only.** `src/lib/email/send.ts` and
   `src/lib/zoho/client.ts` both import `server-only`, so importing either from
@@ -498,7 +317,7 @@ Two caveats specific to anonymous deployments:
 
 ---
 
-## 11. Project structure
+## 9. Project structure
 
 ```text
 src/
@@ -566,7 +385,7 @@ as `Offer` data would misrepresent them. Add it once you publish real prices.
 
 ---
 
-## 12. What the business owner must replace
+## 10. What the business owner must replace
 
 ### Must change before launch
 

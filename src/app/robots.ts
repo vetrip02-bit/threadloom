@@ -2,6 +2,9 @@ import type { MetadataRoute } from 'next'
 
 import { ALLOW_INDEXING, SITE_URL } from '@/lib/site'
 
+// Required by `output: 'export'` - this file is emitted at build time.
+export const dynamic = 'force-static'
+
 export default function robots(): MetadataRoute.Robots {
   // A deployment that still carries placeholder contact details, template
   // legal pages and sample pricing must not be indexed. Indexing is opt-in:

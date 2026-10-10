@@ -7,6 +7,7 @@ import { Breadcrumbs } from '@/components/catalog/Breadcrumbs'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Section, SectionHeading } from '@/components/ui/Section'
 import { QuoteCta } from '@/components/home/QuoteCta'
+import { assetPath } from '@/lib/asset'
 
 export const metadata: Metadata = {
   title: 'About',
@@ -58,7 +59,7 @@ export default function AboutPage() {
 
           <div className="relative aspect-[4/5] overflow-hidden rounded-image bg-ivory">
             <Image
-              src="/images/hospitality-uniforms.png"
+              src={assetPath("/images/hospitality-uniforms.png")}
               alt="A bell-desk attendant in a burgundy bandhgala and a service associate in a waistcoat in a hotel lobby."
               fill
               loading="lazy"

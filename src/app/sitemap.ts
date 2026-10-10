@@ -3,6 +3,9 @@ import type { MetadataRoute } from 'next'
 import { CATEGORIES } from '@/data/catalog'
 import { SITE_URL } from '@/lib/site'
 
+// Required by `output: 'export'` - this file is emitted at build time.
+export const dynamic = 'force-static'
+
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date()
 

@@ -6,6 +6,7 @@ import { Breadcrumbs } from '@/components/catalog/Breadcrumbs'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Section, SectionHeading } from '@/components/ui/Section'
 import { CustomizationRequestForm } from '@/components/quote/CustomizationRequestForm'
+import { assetPath } from '@/lib/asset'
 
 export const metadata: Metadata = {
   title: 'Customization',
@@ -89,7 +90,7 @@ export default function CustomizationPage() {
 
           <div className="relative aspect-[4/5] overflow-hidden rounded-image bg-ivory lg:sticky lg:top-28">
             <Image
-              src="/images/event-merchandise.png"
+              src={assetPath("/images/event-merchandise.png")}
               alt="Branded navy polo shirts, caps, lanyards and canvas tote bags laid out on an event counter."
               fill
               loading="lazy"

@@ -8,6 +8,7 @@ import { Breadcrumbs } from '@/components/catalog/Breadcrumbs'
 import { PageHeader } from '@/components/ui/PageHeader'
 import { Section } from '@/components/ui/Section'
 import { QuoteCta } from '@/components/home/QuoteCta'
+import { assetPath } from '@/lib/asset'
 
 export const metadata: Metadata = {
   title: 'Industries',
@@ -75,7 +76,7 @@ export default function IndustriesPage() {
                 }
               >
                 <Image
-                  src={category.image}
+                  src={assetPath(category.image)}
                   alt={category.imageAlt}
                   fill
                   loading="lazy"
