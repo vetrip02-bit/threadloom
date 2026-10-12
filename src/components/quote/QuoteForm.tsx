@@ -268,43 +268,14 @@ export function QuoteForm() {
               />
             </div>
 
-            <div className="grid gap-5 sm:grid-cols-2">
-              <TextField
-                label="City"
-                name="city"
-                autoComplete="address-level2"
-                required
-                value={values.city}
-                error={errors.city}
-                onChange={(e) => set('city', e.target.value)}
-              />
-              <TextField
-                label="Estimated quantity"
-                name="estimatedQuantity"
-                type="number"
-                inputMode="numeric"
-                min={1}
-                required
-                hint={
-                  totalPieces > 0
-                    ? 'Your bag currently totals ' + formatQuantity(totalPieces) + ' pieces.'
-                    : 'Total pieces across all items.'
-                }
-                value={values.estimatedQuantity}
-                error={errors.estimatedQuantity}
-                onChange={(e) => set('estimatedQuantity', e.target.value)}
-              />
-            </div>
-
             <TextField
-              label="Expected delivery date"
-              name="expectedDate"
-              type="date"
-              min={todayIso()}
-              hint="Helps us plan production backwards from your deadline."
-              value={values.expectedDate}
-              error={errors.expectedDate}
-              onChange={(e) => set('expectedDate', e.target.value)}
+              label="City"
+              name="city"
+              autoComplete="address-level2"
+              required
+              value={values.city}
+              error={errors.city}
+              onChange={(e) => set('city', e.target.value)}
             />
 
             <SelectField
@@ -319,6 +290,38 @@ export function QuoteForm() {
             />
             </>
           )}
+
+          {/* Order details are required for every enquiry, including signed-in
+              customers whose saved contact details are shown as a summary. */}
+          <div className="grid gap-5 sm:grid-cols-2">
+            <TextField
+              label="Estimated quantity"
+              name="estimatedQuantity"
+              type="number"
+              inputMode="numeric"
+              min={1}
+              required
+              hint={
+                totalPieces > 0
+                  ? 'Your bag currently totals ' + formatQuantity(totalPieces) + ' pieces.'
+                  : 'Total pieces across all items.'
+              }
+              value={values.estimatedQuantity}
+              error={errors.estimatedQuantity}
+              onChange={(e) => set('estimatedQuantity', e.target.value)}
+            />
+
+            <TextField
+              label="Expected delivery date"
+              name="expectedDate"
+              type="date"
+              min={todayIso()}
+              hint="Helps us plan production backwards from your deadline."
+              value={values.expectedDate}
+              error={errors.expectedDate}
+              onChange={(e) => set('expectedDate', e.target.value)}
+            />
+          </div>
 
           <TextAreaField
             label="Requirements"
